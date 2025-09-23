@@ -1,93 +1,193 @@
-﻿Month,Year,PercentOccurrence,Period,DeviceType,Date
-November,2014,14,1,Archival,11/1/14
-November,2015,63,1,Archival,11/1/15
-November,2016,29,1,Archival,11/1/16
-November,2017,0,1,Archival,11/1/17
-November,2021,3,2,RTWB ,11/1/21
-November,2022,13,2,RTWB ,11/1/22
-November,2023,3,2,RTWB ,11/1/23
-November,2024,3,2,RTWB ,11/1/24
-December,2014,43,1,Archival,12/1/14
-December,2015,38,1,Archival,12/1/15
-December,2016,50,1,Archival,12/1/16
-December,2021,23,2,RTWB ,12/1/21
-December,2022,19,2,RTWB ,12/1/22
-December,2023,32,2,RTWB ,12/1/23
-December,2024,29,2,RTWB ,12/1/24
-January,2015,88,1,Archival,1/1/15
-January,2016,57,1,Archival,1/1/16
-January,2017,50,1,Archival,1/1/17
-January,2022,35,2,RTWB ,1/1/22
-January,2023,35,2,RTWB ,1/1/23
-January,2024,74,2,RTWB ,1/1/24
-February,2015,100,1,Archival,2/1/15
-February,2016,75,1,Archival,2/1/16
-February,2017,0,1,Archival,2/1/17
-February,2022,14,2,RTWB ,2/1/22
-February,2023,68,2,RTWB ,2/1/23
-February,2024,28,2,RTWB ,2/1/24
-March,2015,50,1,Archival,3/1/15
-March,2016,100,1,Archival,3/1/16
-March,2017,25,1,Archival,3/1/17
-March,2022,6,2,RTWB ,3/1/22
-March,2023,39,2,RTWB ,3/1/23
-March,2024,26,2,RTWB ,3/1/24
-April,2015,29,1,Archival,4/1/15
-April,2016,50,1,Archival,4/1/16
-April,2017,29,1,Archival,4/1/17
-April,2022,0,2,RTWB ,4/1/22
-April,2023,3,2,RTWB ,4/1/23
-April,2024,17,2,RTWB ,4/1/24
-May,2015,0,1,Archival,5/1/15
-May,2016,0,1,Archival,5/1/16
-May,2017,25,1,Archival,5/1/17
-May,2021,0,2,RTWB ,5/1/21
-May,2022,0,2,RTWB ,5/1/22
-May,2023,0,2,RTWB ,5/1/23
-May,2024,3,2,RTWB ,5/1/24
-June,2015,0,1,Archival,6/1/15
-June,2016,0,1,Archival,6/1/16
-June,2017,14,1,Archival,6/1/17
-June,2021,3,2,RTWB ,6/1/21
-June,2022,0,2,RTWB ,6/1/22
-June,2023,0,2,RTWB ,6/1/23
-June,2024,0,2,RTWB ,6/1/24
-July,2015,29,1,Archival,7/1/15
-July,2016,0,1,Archival,7/1/16
-July,2017,0,1,Archival,7/1/17
-July,2021,0,2,RTWB ,7/1/21
-July,2022,0,2,RTWB ,7/1/22
-July,2023,0,2,RTWB ,7/1/23
-July,2024,0,2,RTWB ,7/1/24
-August,2015,0,1,Archival,8/1/15
-August,2016,0,1,Archival,8/1/16
-August,2017,13,1,Archival,8/1/17
-August,2021,0,2,RTWB ,8/1/21
-August,2022,0,2,RTWB ,8/1/22
-August,2023,0,2,RTWB ,8/1/23
-September,2015,0,1,Archival,9/1/15
-September,2016,0,1,Archival,9/1/16
-September,2017,0,1,Archival,9/1/17
-September,2021,3,2,RTWB ,9/1/21
-September,2022,3,2,RTWB ,9/1/22
-September,2023,0,2,RTWB ,9/1/23
-October,2015,0,1,Archival,10/1/15
-October,2016,0,1,Archival,10/1/16
-October,2017,13,1,Archival,10/1/17
-October,2021,0,2,RTWB ,10/1/21
-October,2022,0,2,RTWB ,10/1/22
-October,2023,0,2,RTWB ,10/1/23
-October,2024,0,2,RTWB ,10/1/24
-April,2023,0,2,Archival,4/1/23
-May,2023,0,2,Archival,5/1/23
-June,2023,0,2,Archival,6/1/23
-July,2023,0,2,Archival,7/1/23
-August,2023,0,2,Archival,8/1/23
-September,2023,0,2,Archival,9/1/23
-October,2023,0,2,Archival,10/1/23
-November,2023,7,2,Archival,11/1/23
-December,2023,45,2,Archival,12/1/23
-January,2024,94,2,Archival,1/1/24
-February,2024,28,2,Archival,2/1/24
-March,2024,45,2,Archival,3/1/24
-April,2024,12,2,Archival,4/1/24
+﻿Month,Year,PercentOccurrence,Period,Site,DeviceType
+November,2014,14,1,A-7M,Archival
+November,2014,29,1,A-2M,Archival
+November,2014,0,1,T-2M,Archival
+December,2014,43,1,A-7M,Archival
+December,2014,57,1,A-2M,Archival
+December,2014,43,1,T-2M,Archival
+January,2015,88,1,A-7M,Archival
+January,2015,63,1,A-2M,Archival
+January,2015,88,1,T-2M,Archival
+February,2015,100,1,A-7M,Archival
+February,2015,86,1,A-2M,Archival
+February,2015,86,1,T-2M,Archival
+March,2015,50,1,A-7M,Archival
+March,2015,38,1,A-2M,Archival
+March,2015,50,1,T-2M,Archival
+April,2015,29,1,A-7M,Archival
+April,2015,0,1,A-2M,Archival
+April,2015,43,1,T-2M,Archival
+May,2015,0,1,A-7M,Archival
+May,2015,0,1,A-2M,Archival
+May,2015,0,1,T-2M,Archival
+June,2015,0,1,A-7M,Archival
+June,2015,0,1,A-2M,Archival
+June,2015,0,1,T-2M,Archival
+July,2015,29,1,A-7M,Archival
+July,2015,0,1,A-2M,Archival
+July,2015,29,1,T-2M,Archival
+August,2015,0,1,A-7M,Archival
+August,2015,0,1,A-2M,Archival
+August,2015,13,1,T-2M,Archival
+September,2015,0,1,A-7M,Archival
+September,2015,0,1,A-2M,Archival
+September,2015,13,1,T-2M,Archival
+October,2015,0,1,A-7M,Archival
+October,2015,0,1,A-2M,Archival
+October,2015,0,1,T-2M,Archival
+November,2015,63,1,A-7M,Archival
+November,2015,25,1,A-2M,Archival
+November,2015,0,1,T-2M,Archival
+December,2015,38,1,A-7M,Archival
+December,2015,63,1,A-2M,Archival
+December,2015,38,1,T-2M,Archival
+January,2016,57,1,A-7M,Archival
+January,2016,43,1,A-2M,Archival
+January,2016,57,1,T-2M,Archival
+February,2016,75,1,A-7M,Archival
+February,2016,75,1,A-2M,Archival
+February,2016,50,1,T-2M,Archival
+March,2016,100,1,A-7M,Archival
+March,2016,100,1,A-2M,Archival
+March,2016,100,1,T-2M,Archival
+April,2016,50,1,A-7M,Archival
+April,2016,13,1,A-2M,Archival
+April,2016,63,1,T-2M,Archival
+May,2016,0,1,A-7M,Archival
+May,2016,0,1,A-2M,Archival
+May,2016,0,1,T-2M,Archival
+June,2016,0,1,A-7M,Archival
+June,2016,0,1,A-2M,Archival
+June,2016,14,1,T-2M,Archival
+July,2016,0,1,A-7M,Archival
+July,2016,13,1,A-2M,Archival
+July,2016,0,1,T-2M,Archival
+August,2016,0,1,A-7M,Archival
+August,2016,0,1,A-2M,Archival
+August,2016,0,1,T-2M,Archival
+September,2016,0,1,A-7M,Archival
+September,2016,0,1,A-2M,Archival
+September,2016,0,1,T-2M,Archival
+October,2016,0,1,A-7M,Archival
+October,2016,0,1,A-2M,Archival
+October,2016,13,1,T-2M,Archival
+November,2016,29,1,A-7M,Archival
+November,2016,14,1,A-2M,Archival
+November,2016,29,1,T-2M,Archival
+December,2016,50,1,A-7M,Archival
+December,2016,63,1,A-2M,Archival
+December,2016,50,1,T-2M,Archival
+January,2017,50,1,A-7M,Archival
+January,2017,50,1,A-2M,Archival
+January,2017,40,1,T-2M,Archival
+February,2017,0,1,A-7M,Archival
+February,2017,0,1,A-2M,Archival
+February,2017,14,1,T-2M,Archival
+March,2017,25,1,A-7M,Archival
+March,2017,13,1,A-2M,Archival
+March,2017,25,1,T-2M,Archival
+April,2017,29,1,A-7M,Archival
+April,2017,0,1,A-2M,Archival
+April,2017,29,1,T-2M,Archival
+May,2017,25,1,A-7M,Archival
+May,2017,0,1,A-2M,Archival
+May,2017,13,1,T-2M,Archival
+June,2017,14,1,A-7M,Archival
+June,2017,0,1,A-2M,Archival
+June,2017,14,1,T-2M,Archival
+July,2017,0,1,A-7M,Archival
+July,2017,0,1,A-2M,Archival
+July,2017,0,1,T-2M,Archival
+August,2017,13,1,A-7M,Archival
+August,2017,0,1,A-2M,Archival
+August,2017,0,1,T-2M,Archival
+September,2017,0,1,A-7M,Archival
+September,2017,0,1,A-2M,Archival
+September,2017,14,1,T-2M,Archival
+October,2017,13,1,A-7M,Archival
+October,2017,0,1,A-2M,Archival
+October,2017,13,1,T-2M,Archival
+November,2017,0,1,A-7M,Archival
+November,2017,33,1,A-2M,Archival
+November,2017,17,1,T-2M,Archival
+May,2021,0,2,RTWB,Real Time
+June,2021,3,2,RTWB,Real Time
+July,2021,0,2,RTWB,Real Time
+August,2021,0,2,RTWB,Real Time
+September,2021,3,2,RTWB,Real Time
+October,2021,0,2,RTWB,Real Time
+November,2021,3,2,RTWB,Real Time
+December,2021,23,2,RTWB,Real Time
+January,2022,35,2,RTWB,Real Time
+February,2022,14,2,RTWB,Real Time
+March,2022,6,2,RTWB,Real Time
+April,2022,0,2,RTWB,Real Time
+May,2022,0,2,RTWB,Real Time
+June,2022,0,2,RTWB,Real Time
+July,2022,0,2,RTWB,Real Time
+August,2022,0,2,RTWB,Real Time
+September,2022,3,2,RTWB,Real Time
+October,2022,0,2,RTWB,Real Time
+November,2022,13,2,RTWB,Real Time
+December,2022,19,2,RTWB,Real Time
+January,2023,35,2,RTWB,Real Time
+February,2023,68,2,RTWB,Real Time
+March,2023,39,2,RTWB,Real Time
+April,2023,0,2,A-7M,Archival
+April,2023,3,2,RTWB,Real Time
+April,2023,0,2,A-2M,Archival
+April,2023,0,2,T-2M,Archival
+May,2023,0,2,A-7M,Archival
+May,2023,0,2,RTWB,Real Time
+May,2023,0,2,A-2M,Archival
+May,2023,0,2,T-2M,Archival
+June,2023,0,2,A-7M,Archival
+June,2023,0,2,RTWB,Real Time
+June,2023,0,2,A-2M,Archival
+June,2023,0,2,T-2M,Archival
+July,2023,0,2,A-7M,Archival
+July,2023,0,2,RTWB,Real Time
+July,2023,0,2,A-2M,Archival
+July,2023,0,2,T-2M,Archival
+August,2023,0,2,A-7M,Archival
+August,2023,0,2,RTWB,Real Time
+August,2023,0,2,A-2M,Archival
+August,2023,0,2,T-2M,Archival
+September,2023,0,2,A-7M,Archival
+September,2023,0,2,RTWB,Real Time
+September,2023,0,2,A-2M,Archival
+September,2023,0,2,T-2M,Archival
+October,2023,0,2,A-7M,Archival
+October,2023,0,2,RTWB,Real Time
+October,2023,0,2,A-2M,Archival
+October,2023,0,2,T-2M,Archival
+November,2023,7,2,A-7M,Archival
+November,2023,3,2,RTWB,Real Time
+November,2023,10,2,A-2M,Archival
+November,2023,3,2,T-2M,Archival
+December,2023,45,2,A-7M,Archival
+December,2023,32,2,RTWB,Real Time
+December,2023,48,2,A-2M,Archival
+December,2023,32,2,T-2M,Archival
+January,2024,94,2,A-7M,Archival
+January,2024,74,2,RTWB,Real Time
+January,2024,55,2,A-2M,Archival
+January,2024,74,2,T-2M,Archival
+February,2024,28,2,A-7M,Archival
+February,2024,28,2,RTWB,Real Time
+February,2024,38,2,A-2M,Archival
+February,2024,24,2,T-2M,Archival
+March,2024,45,2,A-7M,Archival
+March,2024,26,2,RTWB,Real Time
+March,2024,13,2,A-2M,Archival
+March,2024,42,2,T-2M,Archival
+April,2024,12,2,A-7M,Archival
+April,2024,17,2,RTWB,Real Time
+April,2024,0,2,A-2M,Archival
+April,2024,29,2,T-2M,Archival
+May,2024,3,2,RTWB,Real Time
+June,2024,0,2,RTWB,Real Time
+July,2024,0,2,RTWB,Real Time
+October,2024,0,2,RTWB,Real Time
+November,2024,3,2,RTWB,Real Time
+December,2024,29,2,RTWB,Real Time

@@ -8,30 +8,38 @@ library(mgcv)
 library(gamlss)
 library(gamlss.tr)
 
-D <- read.csv("data/WhaleOccurrence_2014_2025_090325.csv", header = TRUE)
-D <- D %>%
+
+RWocc <- read_csv("DataRaw/WhaleOccurrence2014_2024_091825.csv")
+RWocc<- RWocc %>%
     mutate(
         #Year = ifelse(Month %in% month.name[1:10], Year),  #Year + 1
         Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d")
     ) %>%
-    mutate(Month = as.numeric(format(Date, "%m")),
-           Period = ifelse(Year <= 2017, "PAM array", "RTWB")) %>%
-    select(-Study) %>%
-    arrange(Species, Date)
+    mutate(Month = as.numeric(format(Date, "%m")))
+           #Period = ifelse(Year <= 2017, "PAM array", "RTWB")) %>%
+    #select(-Study) %>%
+    #arrange(Species, Date)
 
 # Change year to categorical
-D$YearCat <- as.factor(D$Year)
-D$YearCat <- relevel(D$YearCat, "2015") #relevel for intercept to be 2015 not 2014
+RWocc$YearCat <- as.factor(RWocc$Year)
+RWocc$YearCat <- relevel(RWocc$YearCat, "2015") #relevel for intercept to be 2015 not 2014
 
-GGally::ggpairs(D_rw) #creates pairs plot, matrix pairwise relationships of all data
-hist(D_rw$PercentOccurrence) # zero inflated, effect which families might be good options
-sort(D_rw$PercentOccurrence)
+#Change period (1 = 2014-17, 2 = 2021-2024) to categorical
+RWocc$Period <- as.factor(RWocc$Period)
 
-m_rw <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
+
+GGally::ggpairs(RWocc) #creates pairs plot, matrix pairwise relationships of all data
+hist(RWocc$PercentOccurrence) # zero inflated distribution, effect which families might be good options
+sort(RWocc$PercentOccurrence)
+
+m_RWocc <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                    # pb(Year, max.df = 5) +
                    scs(Month, control = cs.control(cv = FALSE)) +
                    #ga(~ s(Month, bs = "cc")) +
-                   YearCat
+                   YearCat +
+                   Site +
+                   Period +
+                   DeviceType*Period
                # + Period
                , #+ Year:Period,
                # random = ~1 | Dummy
@@ -39,16 +47,30 @@ m_rw <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                # ), # creates an autocorrelation structure
                family = ZINBI,
                control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-               data = D_rw)
+               data = RWocc)
 par(mfrow = c(1, 2))
-plot(m_rw)
-plot(m_rw, ts = TRUE)
+plot(m_RWocc)
+plot(m_RWocc, ts = TRUE)
 
-summary(m_rw)
-term.plot(m_rw)
+
+summary(m_RWocc)
+term.plot(m_RWocc)
+
+## Model testing results -- 9/22/25
+## Year as continuous with Site and Period added - AIC: 1132.014
+##     ACF of 0.3 significant (above dotted line) lag around 2.5 and 18
+##
+## Year as categorical with Site and Period added - AIC 1125.248
+##      Partial plots for month and year look way better
+##      ACF still significant (does this matter if its 0.3?)
+##      otherwise residual plots, homoskedascity, quantile resids look good
+##
+## Year as categorical with Site, Period AND DeviceType*Period - AIC:1125.248
+##      very similar results
+
 
 # Generate new "no year" and "no month" models for RW Likelihood Ratio tests
-m_rwnoYear <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
+m_RWocc_noYear <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                          # pb(Year, max.df = 5) +
                          scs(Month, control = cs.control(cv = FALSE))
                      #+
@@ -61,9 +83,9 @@ m_rwnoYear <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                      # ), # creates an autocorrelation structure
                      family = ZINBI,
                      control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-                     data = D_rw)
+                     data = RWocc)
 
-m_rwnoMonth <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
+m_RWocc_noMonth <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                           # pb(Year, max.df = 5) +
                           #scs(Month, control = cs.control(cv = FALSE))
                           #ga(~ s(Month, bs = "cc")) +
@@ -75,8 +97,8 @@ m_rwnoMonth <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                       # ), # creates an autocorrelation structure
                       family = ZINBI,
                       control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-                      data = D_rw)
+                      data = RWocc)
 
 #Running Likelihood ratio tests for each explanatory variable
-LR.test(m_rw_noYear, m_rw)
-LR.test(m_rw_noMonth, m_rw)
+LR.test(m_RWocc_noYear, m_RWocc)
+LR.test(m_RWocc_noMonth, m_RWocc)
