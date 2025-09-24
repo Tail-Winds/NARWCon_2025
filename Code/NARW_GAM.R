@@ -26,6 +26,9 @@ table(RWocc$DeviceType, RWocc$Period)
 RWocc$YearCat <- as.factor(RWocc$Year)
 RWocc$YearCat <- relevel(RWocc$YearCat, "2015") #relevel for intercept to be 2015 not 2014
 
+RWocc$MonthCat <- as.factor(RWocc$Month)
+#RWocc$MonthCat <- relevel(RWocc$MonthCat, "January") #relevel for intercept to be 2015 not 2014
+
 #Change period (1 = 2014-17, 2 = 2021-2024) to categorical
 RWocc$Period <- as.factor(RWocc$Period)
 
@@ -45,9 +48,11 @@ m_RWocc <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                    scs(Month, control = cs.control(cv = FALSE)) +
                    #ga(~ s(Month, bs = "cc")) +
                    YearCat +
-                   #Site +
+                    DeviceType +
+                      scs(Month, control = cs.control(cv = FALSE))*Site
+                   #MonthCat*YearCat
                    #Period +
-                   DeviceType*YearCat
+                   #DeviceType*YearCat
                # + Period
                , #+ Year:Period,
                # random = ~1 | Dummy
