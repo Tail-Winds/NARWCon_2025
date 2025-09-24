@@ -9,7 +9,7 @@ library(gamlss)
 library(gamlss.tr)
 
 
-RWocc <- read_csv("DataRaw/WhaleOccurrence2014_2024_091825.csv")
+RWocc <- read.csv("DataRaw/WhaleOccurrence2014_2024_091825.csv")
 RWocc<- RWocc %>%
     mutate(
         #Year = ifelse(Month %in% month.name[1:10], Year),  #Year + 1
@@ -19,6 +19,8 @@ RWocc<- RWocc %>%
            #Period = ifelse(Year <= 2017, "PAM array", "RTWB")) %>%
     #select(-Study) %>%
     #arrange(Species, Date)
+table(RWocc$Year, RWocc$Site)
+table(RWocc$DeviceType, RWocc$Period)
 
 # Change year to categorical
 RWocc$YearCat <- as.factor(RWocc$Year)
@@ -28,22 +30,28 @@ RWocc$YearCat <- relevel(RWocc$YearCat, "2015") #relevel for intercept to be 201
 RWocc$Period <- as.factor(RWocc$Period)
 
 
-GGally::ggpairs(RWocc) #creates pairs plot, matrix pairwise relationships of all data
+GGally::ggpairs(RWocc %>% dplyr::relocate(PercentOccurrence, .after = last_col())) #creates pairs plot, matrix pairwise relationships of all data
 hist(RWocc$PercentOccurrence) # zero inflated distribution, effect which families might be good options
+mean(RWocc$PercentOccurrence == 0) # proportion of 0s
 sort(RWocc$PercentOccurrence)
+
+boxplot(PercentOccurrence ~ Site, data = RWocc)
+
+interaction.plot( RWocc$YearCat, RWocc$DeviceType, RWocc$PercentOccurrence)
+
 
 m_RWocc <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                    # pb(Year, max.df = 5) +
                    scs(Month, control = cs.control(cv = FALSE)) +
                    #ga(~ s(Month, bs = "cc")) +
                    YearCat +
-                   Site +
-                   Period +
-                   DeviceType*Period
+                   #Site +
+                   #Period +
+                   DeviceType*YearCat
                # + Period
                , #+ Year:Period,
                # random = ~1 | Dummy
-               #correlation = corARMA(p = 1)
+               correlation = corARMA(p = 1),
                # ), # creates an autocorrelation structure
                family = ZINBI,
                control = gamlss.control(c.crit = 0.01, n.cyc = 100),
@@ -55,6 +63,8 @@ plot(m_RWocc, ts = TRUE)
 
 summary(m_RWocc)
 term.plot(m_RWocc)
+
+
 
 ## Model testing results -- 9/22/25
 ## Year as continuous with Site and Period added - AIC: 1132.014
