@@ -54,9 +54,9 @@ m_RWocc <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                    #Period +
                    #DeviceType*YearCat
                # + Period
-               , #+ Year:Period,
+                #+ Year:Period,
                # random = ~1 | Dummy
-               correlation = corARMA(p = 1),
+                + PercentOccurrence_l1 + PercentOccurrence_l2, #correlation = corARMA(p = 1),
                # ), # creates an autocorrelation structure
                family = ZINBI,
                control = gamlss.control(c.crit = 0.01, n.cyc = 100),
@@ -68,6 +68,16 @@ plot(m_RWocc, ts = TRUE)
 
 summary(m_RWocc)
 term.plot(m_RWocc)
+
+## Manual autocorrelation factor (corAR1) method to get around gamlss
+RWocc$PercentOccurrence_l1 = tapply(RWocc$PercentOccurrence, RWocc$Site, function(x) dplyr::lag(x,1)) %>% unlist()
+# created a lagged version of PO variable, instead of adding correlation through corAR1 can add through this lagged variable
+
+#totaldailydph2$DPH_l1 = tapply(totaldailydph2$DPH, totaldailydph2$pod, function(x) c(NA,x[-length(x)])) %>% unlist()
+# can also do corARMA = (p=2)
+
+RWocc$PercentOccurrence_l2 = tapply(RWocc$PercentOccurrence, RWocc$Site, function(x) dplyr::lag(x, 2)) %>% unlist()
+# created a lagged version of PO variable, instead of adding correlation through corAR1 can add through this lagged variable
 
 
 
