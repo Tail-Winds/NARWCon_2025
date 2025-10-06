@@ -14,8 +14,13 @@ WhaleOcc <- read.csv("DataRaw/NARWWhaleOccur_2014_2024.csv")
 D <- WhaleOcc %>%
       mutate(
           #Year = ifelse(Month %in% month.name[1:10], Year),  #Year + 1
-          Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d")
-      )
+          Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d"),
+          ArchivalPeriod = case_when(
+              DeviceType == "Archival" & Date < as.Date("2018-01-01") ~ 1,
+              DeviceType == "Archival" & Date >= as.Date("2023-01-01") ~ 2,
+              TRUE ~ 0 # Or NA, for other devices/gaps
+              )
+          )
   # D$DeviceType[D$Year <= 2017] = "Archival"
   # D$DeviceType[D$Year >= 2021] = "Real Time"
 
@@ -66,14 +71,14 @@ car::Anova(lm_NARW)
 jpeg("PercentOcc_2014_2024_100525.jpeg", width = 1900, height = 1000, res = 250)
 
 ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
-    geom_line(linewidth = 1.2, alpha = 0.7) +
+    geom_line(aes(group = interaction(DeviceType, ArchivalPeriod)), linewidth = 1.2, alpha = 0.7) +
     #facet_wrap(~Species, ncol = 1, scales = "free_y") +
     scale_x_date(
         date_labels = "%B %Y",
         date_breaks = "6 month"
     ) +
     scale_color_manual(
-        values = c("Archival" = "coral2", "Real Time" = "cornflowerblue"),
+        values = c("Archival" = "#377eb8", "Real Time" = "#ff7f00"),
         breaks = c("Archival", "Real Time")
     ) +
     theme_minimal() +
