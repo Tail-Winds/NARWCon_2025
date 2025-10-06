@@ -8,23 +8,22 @@ library(dplyr) # Recommended for general data handling
 data <- read.csv("DataRaw/deployment_periods.csv")
 
 # 2. Ensure date columns are recognized as dates
-data$Start_Date <- as.Date(data$Start_Date)
-data$End_Date <- as.Date(data$End_Date)
+data$Start_Date <- as.Date(data$Start_Date, format = "%m/%d/%y")
+data$End_Date <- as.Date(data$End_Date, format = "%m/%d/%y")
 
 # 3. Define Site order (optional, but good for control)
 # You can customize this order as needed
-site_order <- c("A-2M", "A-7M", "RTWB", "T-2M") # Example order
+site_order <- c("A-2M", "A-7M", "MDOC", "T-2M") # Example order
 data$Site <- factor(data$Site, levels = site_order)
 
 # 4. Define colors and linewidths for your specific devices
 # Your devices are MARU, Rockhopper, and DMON.
-device_colors <- c("MARU" = "#377eb8",       # Blue
-                   "Rockhopper" = "#ff7f00", # Orange
-                   "DMON" = "#4daf4a")       # Green
+device_colors <- c("Archival" = "#377eb8",       # Blue
+                   "Real Time" = "#ff7f00") # Orange
+                   #"DMON" = "#4daf4a")       # Green
 
-device_linewidths <- c("MARU" = 2,
-                       "Rockhopper" = 2,
-                       "DMON" = 2)
+device_linewidths <- c("Archival" = 2,
+                       "Real Time" = 2)
 
 # Define the new axis limits
 start_date_limit <- as.Date("2014-10-31") # November 2014
