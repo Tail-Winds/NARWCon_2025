@@ -63,7 +63,7 @@ lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
                        ,data = Dw)
 car::Anova(lm_NARW)
 
-jpeg("PercentOcc_2014_2024_100525.jpeg", width = 800, height = 600, res = 150)
+jpeg("PercentOcc_2014_2024_100525.jpeg", width = 1900, height = 1000, res = 250)
 
 ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
     geom_line(linewidth = 1.2, alpha = 0.7) +
