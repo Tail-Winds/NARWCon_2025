@@ -19,8 +19,8 @@ D <- WhaleOcc %>%
               DeviceType == "Archival" & Date < as.Date("2018-01-01") ~ 1,
               DeviceType == "Archival" & Date >= as.Date("2023-01-01") ~ 2,
               TRUE ~ 0 # Or NA, for other devices/gaps
-              )
           )
+      )
   # D$DeviceType[D$Year <= 2017] = "Archival"
   # D$DeviceType[D$Year >= 2021] = "Real Time"
 
@@ -71,7 +71,7 @@ car::Anova(lm_NARW)
 jpeg("PercentOcc_2014_2024_100525.jpeg", width = 1900, height = 1000, res = 250)
 
 ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
-    geom_line(aes(group = interaction(DeviceType, ArchivalPeriod)), linewidth = 1.2, alpha = 0.7) +
+    geom_line(aes(group = interaction(DeviceType, ArchivalPeriod)),linewidth = 1.2, alpha = 0.7) +
     #facet_wrap(~Species, ncol = 1, scales = "free_y") +
     scale_x_date(
         date_labels = "%B %Y",
