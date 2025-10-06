@@ -8,7 +8,7 @@ library(scales)
 # Data ----
 # getwd()
 # setwd("~/Desktop/KirstensWork/Progress reports/FinalReport")
-WhaleOcc <- read.csv("/Users/kirsten/Desktop/KirstensWork/NARW Consortium 2025/NARWCon_2025/DataRaw/NARWWhaleOccur_2014_2024.csv", header = TRUE)
+WhaleOcc <- read.csv("DataRaw/NARWWhaleOccur_2014_2024.csv")
 
 
 D <- WhaleOcc %>%
@@ -16,8 +16,8 @@ D <- WhaleOcc %>%
           #Year = ifelse(Month %in% month.name[1:10], Year),  #Year + 1
           Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d")
       )
-  D$DeviceType[D$Year <= 2017] = "Archival"
-  D$DeviceType[D$Year >= 2021] = "Real Time"
+  # D$DeviceType[D$Year <= 2017] = "Archival"
+  # D$DeviceType[D$Year >= 2021] = "Real Time"
 
 
 
@@ -63,10 +63,10 @@ lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
                        ,data = Dw)
 car::Anova(lm_NARW)
 
-jpeg("PercentOcc_2014_2024_082725.jpeg", width = 800, height = 600, res = 150)
+jpeg("PercentOcc_2014_2024_100525.jpeg", width = 800, height = 600, res = 150)
 
 ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
-    geom_line(linewidth = 1.2) +
+    geom_line(linewidth = 1.2, alpha = 0.7) +
     #facet_wrap(~Species, ncol = 1, scales = "free_y") +
     scale_x_date(
         date_labels = "%B %Y",
