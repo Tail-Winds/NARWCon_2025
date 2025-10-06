@@ -70,6 +70,7 @@ car::Anova(lm_NARW)
 
 jpeg("PercentOcc_2014_2024_100525.jpeg", width = 1900, height = 1000, res = 250)
 
+
 ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
     geom_line(aes(group = interaction(DeviceType, ArchivalPeriod)),linewidth = 1.2, alpha = 0.7) +
     #facet_wrap(~Species, ncol = 1, scales = "free_y") +
@@ -81,6 +82,9 @@ ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
         values = c("Archival" = "#377eb8", "Real Time" = "#ff7f00"),
         breaks = c("Archival", "Real Time")
     ) +
+    scale_linetype_manual(
+        values = c("Archival" = "solid", "Real Time" = "solid", "Rockhopper" = "dashed")
+        ) +
     theme_minimal() +
     labs(
         y = "Percent Occurrence",
