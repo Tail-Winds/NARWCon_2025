@@ -79,7 +79,7 @@ ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
         date_breaks = "6 month"
     ) +
     scale_color_manual(
-        values = c("Archival" = "#377eb8", "Real Time" = "#ff7f00"),
+        values = c("Archival" = "#ff7f00", "Real Time" = "#377eb8"),
         breaks = c("Archival", "Real Time")
     ) +
     scale_linetype_manual(
