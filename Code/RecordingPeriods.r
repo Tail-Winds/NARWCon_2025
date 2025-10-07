@@ -18,8 +18,8 @@ data$Site <- factor(data$Site, levels = site_order)
 
 # 4. Define colors and linewidths for your specific devices
 # Your devices are MARU, Rockhopper, and DMON.
-device_colors <- c("Archival" = "#377eb8",       # Blue
-                   "Real Time" = "#ff7f00") # Orange
+device_colors <- c("Real Time" = "#377eb8",       # Blue
+                   "Archival" = "#ff7f00") # Orange
                    #"DMON" = "#4daf4a")       # Green
 
 device_linewidths <- c("Archival" = 2,
@@ -29,7 +29,10 @@ device_linewidths <- c("Archival" = 2,
 start_date_limit <- as.Date("2014-10-31") # November 2014
 end_date_limit <- as.Date("2025-01-01")   # End of December 2024
 
-# 6. Create the plot
+# 6. Create and export plot -
+
+png("Figures/RecordingEffort.png", width = 1200, height = 600, res = 150)
+
 ggplot(data, aes(y = Site, color = Recording_Device)) +
     # Draw the deployment segments
     geom_segment(aes(x = Start_Date, xend = End_Date, yend = Site, linewidth = Recording_Device),
@@ -49,11 +52,12 @@ ggplot(data, aes(y = Site, color = Recording_Device)) +
     theme_minimal() +
     theme(
         # Text and Legend Formatting
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
         axis.text.y = element_text(size = 12),
         axis.title = element_text(size = 14),
         legend.position = "right",
         legend.title = element_text(size = 12),
+        legend.text = element_text(size = 12),
 
         # === AXIS LINE AND BORDER CONTROL ===
         # 1. Show the X and Y axis lines
@@ -61,7 +65,7 @@ ggplot(data, aes(y = Site, color = Recording_Device)) +
         axis.line.y = element_line(colour = "black", linewidth = 0.5),
 
         # 2. Hide the tick marks
-        axis.ticks.x = element_blank(),
+        axis.ticks.x = element_line(),
         axis.ticks.y = element_blank(),
 
         # 3. Remove the panel border (which created the box)
@@ -78,3 +82,5 @@ ggplot(data, aes(y = Site, color = Recording_Device)) +
         color = "Recording Device",
         #title = "Acoustic Monitoring Deployment Effort"
     )
+
+dev.off()
