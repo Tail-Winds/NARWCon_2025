@@ -66,7 +66,7 @@ p3 <- ggplot(RWocc, aes(x = Period, y = PercentOccurrence)) +
     geom_boxplot(fill = "lightblue")
 p4 <- ggplot(RWocc, aes(x = DeviceType, y = PercentOccurrence)) +
     geom_boxplot(fill = "lightblue")
-p5 <- ggplot(RWocc, aes(x = Site, y = PercentOccurrence)) +
+p5 <- ggplot(RWocc, aes(x = Site, y = PercentOccurrence), facet_wrap(~Month)) +
     geom_boxplot(fill = "lightblue")
 # Combine with patchwork
 (p1 | p2) / (p3 | p4 | p5) +
@@ -127,19 +127,60 @@ plot(m_RWocc1)
 plot(m_RWocc1, ts = TRUE)
 wp(m_RWocc1)
 
-# Define a function to create a cool-to-warm gradient (e.g., blue to red)
-cool_to_warm_palette <- colorRampPalette(c("blue", "cyan", "yellow", "red"))
+# # Define a function to create a cool-to-warm gradient (e.g., blue to red)
+# cool_to_warm_palette <- colorRampPalette(c("blue", "cyan", "yellow", "red"))
+#
+# # Create 100 color shades for the plot
+# custom_colors <- cool_to_warm_palette(100)
 
-# Create 100 color shades for the plot
-custom_colors <- cool_to_warm_palette(100)
+# Term plots w adjusted color palette ----
+# Blue will represent lower values, and red will represent higher values.
 
 ## Term plots ----
+# Define the terms list (as before)
+# Define the terms list
+modterms <- attr(terms(m_RWocc1), "term.labels")
+
+# Define your custom blue-to-red color palette function
+my_palette_func <- colorRampPalette(c("blue", "cyan", "yellow", "red"))
+
+# 1. SAVE the original heat.colors function
+original_heat_colors <- grDevices::heat.colors
+
+# 2. OVERRIDE the heat.colors function with your custom palette
+# Target the 'grDevices' namespace
+assignInNamespace("heat.colors", my_palette_func, ns = "grDevices")
+
+png("Figures/RWocc1_GAMLSS_TermPlots_BlueRed_Final_Override.png",
+    width = 9, height = 7, units = "in", res = 300)
+
+par(mfrow = c(ceiling(length(modterms)/2), 2))
+
+# 3. Plot the interaction term. It should now use the overridden heat.colors.
+# We still use n.col to ensure a smooth gradient.
+plot(getSmo(m_RWocc1, what = "mu", which = 1),
+     scheme = 2,
+     las = 1,
+     n.col = 100)
+
+# 4. Plot the remaining terms
+for (i in 2:length(modterms)) {
+    term.plot(m_RWocc1, what = "mu", terms = modterms[i], las = 1)
+}
+
+dev.off()
+
+# 5. RESTORE the original heat.colors function immediately
+assignInNamespace("heat.colors", original_heat_colors, ns = "grDevices")
+
+# ORIGINAL CODE BEFORE ATTEMPTING COLOR PALETTE CHANGE -
+#Term plots ----
 # list all terms
 modterms <- attr(terms(m_RWocc1), "term.labels")
 
 png("Figures/RWocc1_GAMLSS_TermPlots.png", width = 9, height = 7, units = "in", res = 300)
 par(mfrow = c(ceiling(length(modterms)/2), 2))
-plot(getSmo(m_RWocc1, what = "mu", which = 1), scheme = 2, las = 1)
+plot(getSmo(m_RWocc1, what = "mu", which = 1), scheme = 2, las = 1, n.col = N_COLORS, color.palette = my_palette_func)
 for (i in 2:length(modterms)) {
     term.plot(m_RWocc1, what = "mu", terms = modterms[i], las = 1)
 }
