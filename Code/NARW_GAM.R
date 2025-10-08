@@ -103,13 +103,99 @@ m_RWocc0 <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                    data = RWocc)
 summary(m_RWocc0)
 
-#
+#Old model that did not include a month*site interaction
+
+set.seed(123)
+m_RWocc1 <- gamlss(PercentOccurrence / 100 ~
+                      ga(~ti(Year, Month)) +
+                       scs(Month, df = 7, control = cs.control(cv = FALSE)) +
+                      # ga(~s(Month, bs = "cp")) +
+                      pb(Year) +
+                      # YearCat + # seems like year as continuous is better
+                      DeviceType
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #ZINBI,
+                  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWocc)
+summary(m_RWocc1)
+# Select model based on AIC
+m_RWocc1 <- gamlss::stepGAIC(m_RWocc1)
+
+## Model diagnostics ----
+plot(m_RWocc1)
+plot(m_RWocc1, ts = TRUE)
+wp(m_RWocc1)
+
+# Define a function to create a cool-to-warm gradient (e.g., blue to red)
+cool_to_warm_palette <- colorRampPalette(c("blue", "cyan", "yellow", "red"))
+
+# Create 100 color shades for the plot
+custom_colors <- cool_to_warm_palette(100)
+
+## Term plots ----
+# list all terms
+modterms <- attr(terms(m_RWocc1), "term.labels")
+
+png("Figures/RWocc1_GAMLSS_TermPlots.png", width = 9, height = 7, units = "in", res = 300)
+par(mfrow = c(ceiling(length(modterms)/2), 2))
+plot(getSmo(m_RWocc1, what = "mu", which = 1), scheme = 2, las = 1)
+for (i in 2:length(modterms)) {
+    term.plot(m_RWocc1, what = "mu", terms = modterms[i], las = 1)
+}
+dev.off()
+
+# Find the index of your interaction term, e.g., "Year:Month"
+interaction_term <- "ga(~ti(Year, Month))" # Replace with actual term name
+j <- which(modterms == interaction_term)
+
+# Extract the smooth surface for the interaction term
+# This assumes the function returns a data structure you can work with
+# NOTE: The exact structure (e.g., 'z', 'x', 'y' matrices or a dataframe) will depend on your package.
+smooth_data <- getSmo(m_RWocc1, what = "mu", which = j)
+
+
+# Reset plotting layout
+par(mfrow = c(1, 1))
+# If needed, the 2D plot in a different way
+term.plot(m_RWocc1, what = "mu", terms = "ga(~ti(Year, Month))",
+          surface.gam = FALSE)
+
+# Terms for pvc
+# Get predicted values, see term.plot
+# terms <- lpred(m_RWocc1, what = "mu", type = "terms", se.fit = TRUE,
+#       terms = "pvc(Month, by = Site)")
+# The pvc is the term #3 in the model, see the object modterms (which = 3)
+term1 <- getSmo(m_RWocc1, what = "mu", which = 3)
+# gamlss:::plot.pvc
+source("./Code/plot.pvc.tailwinds.R")
+# Default plotting
+plot(term1, scheme = "lines")
+d = plot.pvc.tailwinds(term1, scheme = "lines")
+# Plot with ggplot for better handling of factors
+ggplot(d, aes(x = x, y = fv)) +
+    geom_line() +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) +
+    labs(y = "Partial effect of Month", x = "Month") +
+    facet_wrap(~ by) +
+    # set the x-axis labels
+    scale_x_continuous(breaks = seq(2, 12, by = 2))
+
+
+# Terms for sigma
+term.plot(m_RWocc1, what = "sigma")
+
+# Model summary ----
+# although the ga() term doesn't show up in the summary, it is significant
+summary(m_RWocc1)
+
+
 
 set.seed(123)
 m_RWocc <- gamlss(PercentOccurrence / 100 ~
                       ga(~ti(Year, Month)) +
-                      # scs(Month, df = 7, control = cs.control(cv = FALSE)) +
-                      # ga(~s(Month, bs = "cp")) +
+                       # scs(Month, df = 7, control = cs.control(cv = FALSE)) +
+                       #ga(~s(Month, bs = "cp")) +
                       pb(Year) +
                       # YearCat + # seems like year as continuous is better
                       DeviceType

@@ -68,31 +68,78 @@ lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
                        ,data = Dw)
 car::Anova(lm_NARW)
 
-jpeg("PercentOcc_2014_2024_100525.jpeg", width = 1900, height = 1000, res = 250)
+jpeg("PercentOcc_2014_2024_100825.jpeg", width = 1900, height = 1000, res = 250)
 
 
-ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
-    geom_line(aes(group = interaction(DeviceType, ArchivalPeriod)),linewidth = 1.2, alpha = 0.7) +
-    #facet_wrap(~Species, ncol = 1, scales = "free_y") +
+# Assuming your data frame is named 'D'
+
+ggplot(D, aes(x = Date, y = PercentOccurrence)) +
+
+    # 1. Plot Archival Data (Behind and Transparent)
+    # The Archival data is plotted first, using filter() to select it
+    geom_line(
+        data = filter(D, DeviceType == "Archival"),
+        aes(color = DeviceType, group = interaction(DeviceType, ArchivalPeriod)),
+        linewidth = 1.2,
+        alpha = 0.7  # <--- Transparency applied ONLY to Archival
+    ) +
+
+    # 2. Plot Real Time Data (In Front and Opaque)
+    # The Real Time data is plotted second, ensuring it appears on top
+    geom_line(
+        data = filter(D, DeviceType == "Real Time"),
+        aes(color = DeviceType, group = interaction(DeviceType, ArchivalPeriod)),
+        linewidth = 1.2,
+        alpha = 0.8 # <--- No alpha here (or alpha = 1)
+    ) +
+
+    # The rest of your code remains the same
     scale_x_date(
         date_labels = "%B %Y",
         date_breaks = "6 month"
     ) +
     scale_color_manual(
-        values = c("Archival" = "#ff7f00", "Real Time" = "#377eb8"),
-        breaks = c("Archival", "Real Time")
+        # The color values define the colors for the legends and lines
+        values = c("Real Time" = "#377eb8", "Archival" = "#ff7f00"),
+        breaks = c("Real Time", "Archival")
     ) +
+    # NOTE: You don't need scale_linetype_manual if both are "solid"
     scale_linetype_manual(
-        values = c("Archival" = "solid", "Real Time" = "solid", "Rockhopper" = "dashed")
-        ) +
+        values = c("Real Time" = "solid", "Archival" = "solid")
+    ) +
     theme_minimal() +
     labs(
         y = "Percent Occurrence",
-        x = "Date"
+        x = "Date",
+        color = "DeviceType" # Ensure the legend title is correct
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 dev.off()
+
+########################################## Caroline's old code adjusted Oct 8, 2025
+# ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
+#     geom_line(aes(group = interaction(DeviceType, ArchivalPeriod)),linewidth = 1.2, alpha = 0.5) +
+#     #facet_wrap(~Species, ncol = 1, scales = "free_y") +
+#     scale_x_date(
+#         date_labels = "%B %Y",
+#         date_breaks = "6 month"
+#     ) +
+#     scale_color_manual(
+#         values = c("Real Time" = "#377eb8", "Archival" = "#ff7f00"),
+#         breaks = c("Real Time", "Archival")
+#     ) +
+#     scale_linetype_manual(
+#         values = c("Real Time" = "solid", "Archival" = "solid")
+#     ) +
+#     theme_minimal() +
+#     labs(
+#         y = "Percent Occurrence",
+#         x = "Date"
+#     ) +
+#     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
 
 ########################################## Kirsten's old code
 
