@@ -103,12 +103,12 @@ m_RWocc0 <- gamlss(PercentOccurrence ~ #pbc(Month, max.df = 5) +
                    data = RWocc)
 summary(m_RWocc0)
 
-#Old model that did not include a month*site interaction
+#Model used for NARW Consortium Presentation 10/23/25
 
 set.seed(123)
 m_RWocc1 <- gamlss(PercentOccurrence / 100 ~
-                      ga(~ti(Year, Month)) +
-                       scs(Month, df = 7, control = cs.control(cv = FALSE)) +
+                      #ga(~ti(Year, Month)) +
+                       scs(Month, control = cs.control(cv = FALSE)) +
                       # ga(~s(Month, bs = "cp")) +
                       pb(Year) +
                       # YearCat + # seems like year as continuous is better
@@ -127,6 +127,7 @@ plot(m_RWocc1)
 plot(m_RWocc1, ts = TRUE)
 wp(m_RWocc1)
 
+term.plot(m_RWocc1)
 # # Define a function to create a cool-to-warm gradient (e.g., blue to red)
 # cool_to_warm_palette <- colorRampPalette(c("blue", "cyan", "yellow", "red"))
 #
@@ -180,7 +181,7 @@ modterms <- attr(terms(m_RWocc1), "term.labels")
 
 png("Figures/RWocc1_GAMLSS_TermPlots.png", width = 9, height = 7, units = "in", res = 300)
 par(mfrow = c(ceiling(length(modterms)/2), 2))
-plot(getSmo(m_RWocc1, what = "mu", which = 1), scheme = 2, las = 1, n.col = N_COLORS, color.palette = my_palette_func)
+plot(getSmo(m_RWocc1, what = "mu", which = 1), scheme = 2, las = 1)
 for (i in 2:length(modterms)) {
     term.plot(m_RWocc1, what = "mu", terms = modterms[i], las = 1)
 }
