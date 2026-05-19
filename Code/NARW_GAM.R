@@ -127,7 +127,26 @@ plot(m_RWocc1)
 plot(m_RWocc1, ts = TRUE)
 wp(m_RWocc1)
 
-term.plot(m_RWocc1)
+# Set up a 1x2 layout so you can still see Month and Year side-by-side
+par(mfrow = c(1, 2))
+
+# --- PANEL 1: Month (Custom Axis) ---
+# We use terms = 1 to target the first smooth term (Month)
+term.plot(m_RWocc1, terms = 1, xaxt = "n", xlab = "months")
+
+# Define and add your custom text labels
+month_labels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+axis(side = 1, at = 1:12, labels = month_labels)
+
+# --- PANEL 2: Year (Default Axis) ---
+# We use terms = 2 to target the second smooth term (Year)
+term.plot(m_RWocc1, terms = 2, xlab = "Year")
+
+# Reset plotting layout back to default (1x1) when done
+par(mfrow = c(1, 1))
+
+
 # # Define a function to create a cool-to-warm gradient (e.g., blue to red)
 # cool_to_warm_palette <- colorRampPalette(c("blue", "cyan", "yellow", "red"))
 #
