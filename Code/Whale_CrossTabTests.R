@@ -8,7 +8,7 @@ library(scales)
 # Data ----
 # getwd()
 # setwd("~/Desktop/KirstensWork/Progress reports/FinalReport")
-WhaleOcc <- read.csv("DataRaw/NARWWhaleOccur_2014_2024_wthPD.csv")
+WhaleOcc <- read.csv("DataRaw/NARWWhaleOccur_2014_2024_noPD.csv")
 
 
 D <- WhaleOcc %>%
@@ -68,7 +68,7 @@ lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
                        ,data = Dw)
 car::Anova(lm_NARW)
 
-jpeg("PercentOcc_2014_2024_wthPD_062326.jpeg", width = 1900, height = 1000, res = 250)
+jpeg("PercentOcc_2014_2024_noPD_062526.jpeg", width = 1900, height = 1000, res = 250)
 
 
 # Assuming your data frame is named 'D'
