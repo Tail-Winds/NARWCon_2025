@@ -20,7 +20,7 @@ library(gamlss.add)
 
 # Load data ----
 
-RWocc0 <- read.csv("DataRaw/WhaleOccurrence2014_2024_091825.csv")
+RWocc0 <- read.csv("DataRaw/NARWOccurrence2014_2024_070826.csv")
 RWocc <- RWocc0 %>%
     mutate(Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d")) %>%
     mutate(Month = as.numeric(format(Date, "%m"))) %>%

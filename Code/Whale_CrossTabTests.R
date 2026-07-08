@@ -8,7 +8,7 @@ library(scales)
 # Data ----
 # getwd()
 # setwd("~/Desktop/KirstensWork/Progress reports/FinalReport")
-WhaleOcc <- read.csv("DataRaw/NARWWhaleOccur_2014_2024_noPD.csv")
+WhaleOcc <- read.csv("DataRaw/NARWOccurrence2014_2024_070826.csv")
 
 
 D <- WhaleOcc %>%
@@ -20,7 +20,7 @@ D <- WhaleOcc %>%
               DeviceType == "Archival" & Date >= as.Date("2023-01-01") ~ 2,
               TRUE ~ 0 # Or NA, for other devices/gaps
           )
-      )
+
   # D$DeviceType[D$Year <= 2017] = "Archival"
   # D$DeviceType[D$Year >= 2021] = "Real Time"
 
@@ -68,7 +68,7 @@ lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
                        ,data = Dw)
 car::Anova(lm_NARW)
 
-jpeg("PercentOcc_2014_2024_noPD_062526.jpeg", width = 1900, height = 1000, res = 250)
+jpeg("PercentOcc_2014_2024_070826.jpeg", width = 1900, height = 1000, res = 250)
 
 
 # Assuming your data frame is named 'D'
