@@ -8,6 +8,8 @@ library(scales)
 # Data ----
 # getwd()
 # setwd("~/Desktop/KirstensWork/Progress reports/FinalReport")
+
+# Only sites A-7M and RTWB for archival vs real time plot
 WhaleOcc <- read.csv("DataRaw/NARWOccurrence2014_2024_A7MandRTWBonly.csv")
 
 
@@ -20,6 +22,20 @@ D <- WhaleOcc %>%
               DeviceType == "Archival" & Date >= as.Date("2023-01-01") ~ 2,
               TRUE ~ 0 # Or NA, for other devices/gaps
           ))
+
+
+WhaleOcc_all <- read.csv("DataRaw/NARWOccurrence2014_2024_070926.csv")
+
+
+D_all <- WhaleOcc_all %>%
+    mutate(
+        #Year = ifelse(Month %in% month.name[1:10], Year),  #Year + 1
+        Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d"),
+        ArchivalPeriod = case_when(
+            DeviceType == "Archival" & Date < as.Date("2018-01-01") ~ 1,
+            DeviceType == "Archival" & Date >= as.Date("2023-01-01") ~ 2,
+            TRUE ~ 0 # Or NA, for other devices/gaps
+        ))
 
   # D$DeviceType[D$Year <= 2017] = "Archival"
   # D$DeviceType[D$Year >= 2021] = "Real Time"
@@ -68,6 +84,8 @@ lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
                        ,data = Dw)
 car::Anova(lm_NARW)
 
+#To show A7M and RTWB as Archival vs Real Time plot
+
 jpeg("PercentOcc_2014_2024_070926.jpeg", width = 1900, height = 1000, res = 250)
 
 
@@ -87,8 +105,8 @@ ggplot(D, aes(x = Date, y = PercentOccurrence)) +
     # 2. Plot Real Time Data (In Front and Opaque)
     # The Real Time data is plotted second, ensuring it appears on top
     geom_line(
-        data = filter(D, DeviceType == "Real Time"),
-        aes(color = DeviceType, group = interaction(DeviceType, ArchivalPeriod)),
+        data = filter(D, Site == "RTWB"),
+        aes(color = Site, group = interaction(Site, ArchivalPeriod)),
         linewidth = 1.2,
         alpha = 0.8 # <--- No alpha here (or alpha = 1)
     ) +
@@ -115,7 +133,120 @@ ggplot(D, aes(x = Date, y = PercentOccurrence)) +
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+
+
+#To make figure showing all sites percent occcurrence not just A-7M and RTWB
+
+jpeg("PercentOcc_2014_2024_All Sites.jpeg", width = 1900, height = 1000, res = 250)
+
+
+# Assuming your data frame is named 'D'
+
+ggplot(D_all, aes(x = Date, y = PercentOccurrence)) +
+
+    # 1. Plot Archival Data (Behind and Transparent)
+    # The Archival data is plotted first, using filter() to select it
+    geom_line(
+        data = filter(D_all, Site == "A2M"),
+        aes(color = Site, group = interaction(Site, ArchivalPeriod)),
+        linewidth = 1.2,
+        alpha = 0.7  # <--- Transparency applied ONLY to Archival
+    ) +
+
+    geom_line(
+        data = filter(D_all, Site == "A7M"),
+        aes(color = Site, group = interaction(Site, ArchivalPeriod)),
+        linewidth = 1.2,
+        alpha = 0.8  # <--- Transparency applied ONLY to Archival
+    ) +
+
+    geom_line(
+        data = filter(D_all, Site == "T2M"),
+        aes(color = Site, group = interaction(Site, ArchivalPeriod)),
+        linewidth = 1.2,
+        alpha = 0.9  # <--- Transparency applied ONLY to Archival
+    ) +
+
+    # 2. Plot Real Time Data (In Front and Opaque)
+    # The Real Time data is plotted second, ensuring it appears on top
+    geom_line(
+        data = filter(D_all, Site == "RTWB"),
+        aes(color = Site, group = interaction(Site, ArchivalPeriod)),
+        linewidth = 1.2,
+        alpha = 1 # <--- No alpha here (or alpha = 1)
+    ) +
+
+    # The rest of your code remains the same
+    scale_x_date(
+        date_labels = "%B %Y",
+        date_breaks = "6 month"
+    ) +
+    scale_color_manual(
+        # The color values define the colors for the legends and lines
+        values = c("RTWB" = "#377eb8", "A7M" = "#ff7f00","A2M" = "#ff7f89", "T2M" = "#ff7f80"),
+        breaks = c("RTWB", "A7M", "A2M", "T2M")
+    ) +
+    # NOTE: You don't need scale_linetype_manual if both are "solid"
+    # scale_linetype_manual(
+    #     values = c("Real Time" = "solid", "Archival" = "solid")
+    # ) +
+    theme_minimal() +
+    labs(
+        y = "Percent Occurrence",
+        x = "Date",
+        color = "Site" # Ensure the legend title is correct
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 dev.off()
+
+
+jpeg("PercentOcc_2014_2024_070926.jpeg", width = 1900, height = 1000, res = 250)
+
+
+# Assuming your data frame is named 'D'
+
+ggplot(D, aes(x = Date, y = PercentOccurrence)) +
+
+    # 1. Plot Archival Data (Behind and Transparent)
+    # The Archival data is plotted first, using filter() to select it
+    geom_line(
+        data = filter(D, DeviceType == "Archival"),
+        aes(color = DeviceType, group = interaction(DeviceType, ArchivalPeriod)),
+        linewidth = 1.2,
+        alpha = 0.7  # <--- Transparency applied ONLY to Archival
+    ) +
+
+# 2. Plot Real Time Data (In Front and Opaque)
+# The Real Time data is plotted second, ensuring it appears on top
+geom_line(
+    data = filter(D, Site == "RTWB"),
+    aes(color = Site, group = interaction(Site, ArchivalPeriod)),
+    linewidth = 1.2,
+    alpha = 0.8 # <--- No alpha here (or alpha = 1)
+) +
+
+    # The rest of your code remains the same
+    scale_x_date(
+        date_labels = "%B %Y",
+        date_breaks = "6 month"
+    ) +
+    scale_color_manual(
+        # The color values define the colors for the legends and lines
+        values = c("Real Time" = "#377eb8", "Archival" = "#ff7f00"),
+        breaks = c("Real Time", "Archival")
+    ) +
+    # NOTE: You don't need scale_linetype_manual if both are "solid"
+    scale_linetype_manual(
+        values = c("Real Time" = "solid", "Archival" = "solid")
+    ) +
+    theme_minimal() +
+    labs(
+        y = "Percent Occurrence",
+        x = "Date",
+        color = "DeviceType" # Ensure the legend title is correct
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ########################################## Caroline's old code adjusted Oct 8, 2025
 # ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
