@@ -110,9 +110,9 @@ m_RWocc1 <- gamlss(PercentOccurrence / 100 ~
                       #ga(~ti(Year, Month)) +
                        scs(Month, control = cs.control(cv = FALSE)) +
                       # ga(~s(Month, bs = "cp")) +
-                      pb(Year) +
+                      pb(Year)
                       # YearCat + # seems like year as continuous is better
-                      DeviceType
+                      #DeviceType
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
                   ,family = BEINF, #ZINBI,
