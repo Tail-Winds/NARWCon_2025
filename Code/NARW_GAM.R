@@ -20,7 +20,7 @@ library(gamlss.add)
 
 # Load data ----
 
-RWocc0 <- read.csv("DataRaw/NARWOccurrence2014_2024_070826.csv")
+RWocc0 <- read.csv("DataRaw/NARWOccurrence2014_2024_070926.csv")
 RWocc <- RWocc0 %>%
     mutate(Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d")) %>%
     mutate(Month = as.numeric(format(Date, "%m"))) %>%
@@ -110,9 +110,9 @@ m_RWocc1 <- gamlss(PercentOccurrence / 100 ~
                       #ga(~ti(Year, Month)) +
                        scs(Month, control = cs.control(cv = FALSE)) +
                       # ga(~s(Month, bs = "cp")) +
-                      pb(Year)
+                      pb(Year) +
                       # YearCat + # seems like year as continuous is better
-                      #DeviceType
+                      DeviceType
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
                   ,family = BEINF, #ZINBI,

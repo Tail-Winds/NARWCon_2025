@@ -43,7 +43,7 @@ monthly_occurrence_noPD <- RWs_noPD %>%
 print(monthly_occurrence_noPD)
 
 # Write to a new CSV file
-write.csv(monthly_occurrence_noPD, "PercentOccur_noPD.csv", row.names = FALSE)
+write.csv(monthly_occurrence_noPD, "NARWPercentOccur.csv", row.names = FALSE)
 
 # percent occurence
 monthly_occurrence_wthPD <- RWs_wthPD %>%
