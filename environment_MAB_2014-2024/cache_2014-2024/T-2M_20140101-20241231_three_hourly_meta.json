@@ -1,0 +1,44 @@
+{
+    "lat": 38.303,
+    "grid_points": {
+        "doppio": {
+            "source": "doppio",
+            "grid_lat": 38.2829,
+            "grid_lon": -74.4878,
+            "dist_km": 2.9,
+            "xi": 18,
+            "eta": 28,
+            "cell_km": 7
+        },
+        "waverys": {
+            "source": "waverys",
+            "grid_lat": 38.4,
+            "grid_lon": -74.6,
+            "dist_km": 13.6,
+            "cell_deg": 0.2
+        },
+        "ndbc": {
+            "source": "ndbc",
+            "station_lat": 38.46,
+            "station_lon": -74.7,
+            "dist_km": 24.4
+        }
+    },
+    "tstart": "2014-01-01T00:00:00",
+    "resolution": "three_hourly",
+    "note": "Lean collaborator cache. Synthetic hourly spine (no ERA5). Reuses main-pipeline extractors + resampling.",
+    "excluded": [
+        "ERA5",
+        "IMERG",
+        "AIS",
+        "GFW"
+    ],
+    "site": "T-2M",
+    "tend": "2024-12-31T23:00:00",
+    "lon": -74.505,
+    "sources": [
+        "DOPPIO",
+        "NDBC",
+        "WAVERYS"
+    ]
+}
