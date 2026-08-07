@@ -9,7 +9,7 @@ library(lubridate)
 
 # Load data
 # -----------------------------------------------------------------
-RWs_daily <- read.csv("/Users/kirsten/Desktop/KirstensWork/NARW Consortium 2025/NARWCon_2025/DataRaw/masterNARW_noblanks_080726.csv")
+RWs_daily <- read.csv("/Users/kirsten/Desktop/KirstensWork/NARW Consortium 2025/NARWCon_2025/DataRaw/masterNARW_noblanks_080726_start15.csv")
 #RWs_wthPD <- read.csv("~/Documents/Documents - Caroline’s MacBook Pro/Manuscript_NARW Occurrence 2014-24/Analysis/RWs_wthPD.csv")
 
 # percent occurence
@@ -92,7 +92,7 @@ summary_8day <- RWs_daily %>%
 print(weekly_occurrence)
 
 # Write to a new CSV file
-write.csv(summary_8day, "NARWPercentOccur_8daysummary.csv", row.names = FALSE)
+write.csv(summary_8day, "NARWPercentOccur_8daysummary_start15.csv", row.names = FALSE)
 
 
 ###################################################################################################
