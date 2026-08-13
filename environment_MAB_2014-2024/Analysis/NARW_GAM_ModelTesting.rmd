@@ -1,0 +1,507 @@
+---
+title: "NARW_GAM_ModelTesting"
+output: html_document
+date: "2026-08-11"
+---
+
+```{r}
+library(dplyr)
+# library(scales)
+
+# Visualization
+library(ggplot2)
+theme_set(theme_light())
+library(patchwork)
+library(GGally)
+
+# Modeling
+library(gamlss)
+# library(gamlss.tr)
+library(gamlss.add)
+ library(mgcv)
+```
+
+
+```{r}
+# Load data ----
+
+RWocc0 <- read.csv("RWenv_monthly.csv")
+RWocc <- RWocc0 %>%
+    mutate(Date = mdy(Date)) %>%
+    mutate(Month = as.numeric(format(Date, "%m"))) %>%
+    # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
+    mutate(MonthCat = as.factor(month),
+           period = as.factor(period),
+           Site = as.factor(Site),
+           device_type = as.factor(device_type),
+           dist_200m_km = as.integer(dist_200m_km)) %>%
+    # Create lagged values of PercentOccurrence, by Site
+    # group_by(Site) %>%
+    # mutate(PercentOccurrence_l1 = dplyr::lag(PercentOccurrence, 1, order_by = Date),
+    #        PercentOccurrence_l2 = dplyr::lag(PercentOccurrence, 2, order_by = Date)) %>%
+    # ungroup() %>%
+    # Sort by Site and Date
+    arrange(Site, Date)
+
+# Change year to categorical
+RWocc$YearCat <- as.factor(RWocc$year)
+RWocc$YearCat <- factor(RWocc$year, levels = c("2014", "2015", "2016", "2017", "2021", "2022", "2023", "2024"))
+```
+
+```{r}
+# Exploratory analysis ----
+
+# Sample sizes for different combinations
+table(RWocc$Year, RWocc$Site)
+table(RWocc$device_type, RWocc$period)
+```
+
+
+```{r}
+# Histogram of response variable
+hist(RWocc$percent_occurrence)
+# zero inflated distribution, effect which families might be good options
+mean(RWocc$percent_occurrence == 0) # proportion of 0s
+sort(RWocc$percent_occurrence)
+```
+
+```{r}
+# MONTHLY
+ggpairs(RWocc, 
+        title = "Monthly Pairwise Correlations",
+        upper = list(continuous = wrap("cor", size = 4.5)),
+        lower = list(continuous = wrap("points", alpha = 0.6, size = 1))) +
+  theme_minimal()
+```
+
+```{r}
+# Boxplots of Occurrence by different categorical variables
+p1 <- ggplot(RWocc, aes(x = Site, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") 
+p2 <- ggplot(RWocc, aes(x = as.factor(month), y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p3 <- ggplot(RWocc, aes(x = period, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p4 <- ggplot(RWocc, aes(x = device_type, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p5 <- ggplot(RWocc, aes(x = as.factor(dist_200m_km), y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+# Combine with patchwork
+(p1 | p2) / (p3 | p4 | p5) +
+  plot_annotation(title = "Monthly occurrence by different categorical variables")
+```
+```{r}
+ ggplot(RWocc, aes(y=percent_occurrence, x=sst)) + geom_line()
+ ggplot(RWocc, aes(y=percent_occurrence, x=sss)) + geom_line()
+ ggplot(RWocc, aes(y=percent_occurrence, x=stratification)) + geom_line()
+ ggplot(RWocc, aes(y=percent_occurrence, x=phase)) + geom_line()
+ ggplot(RWocc, aes(y=percent_occurrence, x=bottom_temp)) + geom_line()
+
+```
+
+```{r}
+# Interaction plot
+with(RWocc,
+     interaction.plot(YearCat, device_type, percent_occurrence)
+)
+with(RWocc,
+     interaction.plot(YearCat, MonthCat, percent_occurrence, col = MonthCat)
+)
+
+```
+```{r}
+# Modeling ---- model used in NARW consortium 2025 presentation -- monthly % occ -- year continuous
+set.seed(123)
+m_RWocc0 <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                      scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                      # pb(sst) +
+                      # pb(sss) +
+                      # pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                      pb(year) +
+                    #   YearCat + # seems like year as continuous is better
+                      device_type + 
+                      Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #zero inflated beta
+                  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWocc)
+summary(m_RWocc0)
+
+## Model diagnostics ----
+plot(m_RWocc0)
+plot(m_RWocc0, ts = TRUE)
+wp(m_RWocc0)
+```
+
+```{r}
+# Term plots of month and yearcat
+
+par(mfrow = c(1, 2))
+
+# --- PANEL 1: Month (Custom Axis) ---
+# We use terms = 1 to target the first smooth term (Month)
+term.plot(m_RWocc0, terms = 1, xaxt = "n", xlab = "months")
+
+# Define and add your custom text labels
+month_labels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+axis(side = 1, at = 1:12, labels = month_labels)
+
+# --- PANEL 2: Year (Default Axis) ---
+# We use terms = 2 to target the second smooth term (Year)
+term.plot(m_RWocc0, terms = 2, xlab = "Year")
+
+
+```
+
+```{r}
+# Modeling ---- monthly - year as categorical
+set.seed(123)
+m_RWocc1 <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                       pb(sst) +
+                       pb(sss) +
+                       pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                    #  pb(year) +
+                       YearCat + # seems like year as continuous is better
+                      device_type + 
+                      Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #beta inflated
+                  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWocc)
+summary(m_RWocc1)
+```
+
+```{r}
+# Select model based on AIC
+m_RWocc1 <- gamlss::stepGAIC(m_RWocc1)
+```
+
+```{r}
+## Model diagnostics ----
+plot(m_RWocc1)
+plot(m_RWocc1, ts = TRUE)
+wp(m_RWocc1)
+term.plot(m_RWocc1)
+```
+
+```{r}
+
+set.seed(123)
+m_RWocc2 <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                       pb(sst) +
+                       pb(sss) +
+                       pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                      pb(year) +
+                    #   YearCat +  # seems like year as continuous is better
+                      device_type #+ 
+                    #  Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #beta inflated 
+                  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWocc)
+summary(m_RWocc2)
+
+
+```
+
+```{r}
+## Model diagnostics ----
+plot(m_RWocc2)
+plot(m_RWocc2, ts = TRUE)
+wp(m_RWocc2)
+term.plot(m_RWocc2)
+```
+
+
+
+```{r}
+# BI-WEEKLY
+
+RWenv_biwkly <- read.csv("RWenv_biweekly.csv")
+
+RWenv_biwkly <- RWenv_biwkly %>%
+  mutate(Date = mdy(Date)) %>%
+  mutate(Month = as.numeric(format(Date, "%m")),
+         Year = as.numeric(format(Date, "%Y"))) %>%
+  # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
+  mutate(device_type = as.factor(device_type),
+         YearCat = as.factor(Year),
+         period = as.factor(period),
+         Site = as.factor(Site),
+  ) %>%
+  # Sort by Site and Date
+  arrange(Site, Date)
+
+
+```
+
+```{r}
+# BI WEEKLY 
+ggpairs(RWenv_biwkly, 
+        title = "Biweekly Pairwise Correlations",
+        upper = list(continuous = wrap("cor", size = 4.5)),
+        lower = list(continuous = wrap("points", alpha = 0.6, size = 1))) +
+  theme_minimal()
+```
+
+```{r}
+# Boxplots of Occurrence by different categorical variables
+p1 <- ggplot(RWenv_biwkly, aes(x = Site, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") 
+p2 <- ggplot(RWenv_biwkly, aes(x = period, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p3 <- ggplot(RWenv_biwkly, aes(x = device_type, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+# Combine with patchwork
+(p1 | p2 | p3) +
+  plot_annotation(title = "Biweekly occurrence by different categorical variables")
+```
+
+```{r}
+# Modeling ---- biweekly - year as categorical
+
+set.seed(123)
+m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                       pb(sst) +
+                       pb(sss) +
+                       pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                     # pb(Year) +
+                       YearCat +  # seems like year as continuous is better
+                      device_type + 
+                      Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #zero inflated beta
+                #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWenv_biwkly)
+summary(m_RWoccbiwk)
+```
+
+```{r}
+# Select model based on AIC
+m_RWoccbiwk <- gamlss::stepGAIC(m_RWoccbiwk)
+```
+
+```{r}
+## Model diagnostics ----
+plot(m_RWoccbiwk)
+plot(m_RWoccbiwk, ts = TRUE)
+wp(m_RWoccbiwk)
+
+```
+
+```{r}
+term.plot(m_RWoccbiwk)
+
+```
+
+```{r}
+# Modified biweekly model based on AIC
+
+set.seed(123)
+m_RWoccbiwk2 <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                       pb(sst) +
+                   #    pb(sss) +
+                       pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                     # pb(Year) +
+                       YearCat +  # seems like year as continuous is better
+                      device_type  
+                  #    Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #zero inflated beta
+                #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWenv_biwkly)
+summary(m_RWoccbiwk2)
+
+
+## Model diagnostics ----
+plot(m_RWoccbiwk2)
+plot(m_RWoccbiwk2, ts = TRUE)
+wp(m_RWoccbiwk2)
+
+term.plot(m_RWoccbiwk2)
+
+
+```
+
+```{r}
+# Modeling ---- biweekly - year as continuous
+
+set.seed(123)
+m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                       pb(sst) +
+                       pb(sss) +
+                       pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                      pb(Year) +
+                     #  YearCat +  # seems like year as continuous is better
+                      device_type + 
+                      Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #zero inflated beta
+                  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWenv_biwkly)
+summary(m_RWoccbiwk)
+```
+
+
+
+```{r}
+setwd("~/Documents/Documents - Caroline’s MacBook Pro/Manuscript_NARW Occurrence 2014-24/environment_MAB_2014-2024/master data")
+
+RWenv_wkly <- read.csv("RWEnv_weekly.csv")
+
+RWenv_wkly <- RWenv_wkly %>%
+  mutate(Date = mdy(Date)) %>%
+  mutate(Month = as.numeric(format(Date, "%m")),
+         Year = as.numeric(format(Date, "%Y"))) %>%
+  # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
+  mutate(device_type = as.factor(device_type),
+         YearCat = as.factor(Year),
+         period = as.factor(period),
+         Site = as.factor(Site),
+         ) %>%
+  # Sort by Site and Date
+  arrange(Site, Date)
+
+```
+
+```{r}
+# WEEKLY 
+ggpairs(RWenv_wkly, 
+        title = "Weekly Pairwise Correlations",
+        upper = list(continuous = wrap("cor", size = 4.5)),
+        lower = list(continuous = wrap("points", alpha = 0.6, size = 1))) +
+  theme_minimal()
+
+
+```
+
+
+```{r}
+
+# Histogram of response variable
+hist(RWenv_wkly$percent_occurrence)
+# zero inflated distribution, effect which families might be good options
+mean(RWenv_wkly$percent_occurrence == 0) # proportion of 0s
+sort(RWenv_wkly$percent_occurrence)
+```
+
+```{r}
+# Boxplots of Occurrence by different categorical variables
+p1 <- ggplot(RWenv_wkly, aes(x = Site, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") 
+p2 <- ggplot(RWenv_wkly, aes(x = period, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p3 <- ggplot(RWenv_wkly, aes(x = device_type, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+# Combine with patchwork
+(p1 | p2 | p3) +
+  plot_annotation(title = "Weekly occurrence by different categorical variables")
+
+
+```
+
+```{r}
+# Modeling --- weekly - year as categorical
+
+set.seed(123)
+m_RWoccwk <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                       pb(sst) +
+                       pb(sss) + 
+                       pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                     # pb(Year) +
+                       YearCat +  # seems like year as continuous is better
+                      device_type +
+                      Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #zero inflated beta
+                #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWenv_wkly)
+summary(m_RWoccwk)
+```
+```{r}
+# Select model based on AIC
+m_RWoccwk <- gamlss::stepGAIC(m_RWoccwk)
+```
+
+```{r}
+## Model diagnostics ----
+plot(m_RWoccwk)
+plot(m_RWoccwk, ts = TRUE)
+wp(m_RWoccwk)
+```
+
+```{r}
+term.plot(m_RWoccwk)
+
+```
+
+```{r}
+# Modified biweekly model based on AIC
+
+set.seed(123)
+m_RWoccbiwk2 <- gamlss(percent_occurrence / 100 ~
+                    #  ga(~ti(year, Month)) +
+                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                       pb(sst) +
+                   #    pb(sss) +
+                       pb(phase) +
+                      # ga(~s(Month, bs = "cp")) +
+                     # pb(Year) +
+                       YearCat +  # seems like year as continuous is better
+                      device_type  
+                  #    Site
+                  # + pvc(Month, by = Site)
+                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  ,family = BEINF, #zero inflated beta
+                #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
+                  data = RWenv_biwkly)
+summary(m_RWoccbiwk2)
+
+
+## Model diagnostics ----
+plot(m_RWoccbiwk2)
+plot(m_RWoccbiwk2, ts = TRUE)
+wp(m_RWoccbiwk2)
+
+term.plot(m_RWoccbiwk2)
+
+
+
+
+```

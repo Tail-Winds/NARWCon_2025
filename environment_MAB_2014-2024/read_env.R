@@ -37,6 +37,12 @@ get_env <- function(site, vars = NULL, start = NULL, end = NULL,
 
 # ── Broken out by Site ──────────────────────────────────────────────────────────────
 
+# Check where R is currently looking
+getwd()
+
+# Set the working directory to your main project folder
+setwd("~/Documents/Documents - Caroline’s MacBook Pro/Manuscript_NARW Occurrence 2014-24/environment_MAB_2014-2024/master data")
+
 # Site A-2M
 
 # whole record, one site, hourly:
@@ -67,6 +73,7 @@ a2m_dailyenv <- add_distances(a2m_dailyenv, "A-2M")
 
 # Write to a new CSV file
 write.csv(a2m_dailyenv, "A2M_NARW_dailyenv.csv", row.names = FALSE)
+
 
 # Site A-7M
 
@@ -176,16 +183,33 @@ RW_dailyenv <- RW_dailyenv %>%
   left_join(moon_raw, by = "date") %>%
   mutate(
     # 4-Phase categorization
+    # lunar_phase = case_when(
+    #   phase < 0.125 | phase >= 0.875 ~ "New Moon",
+    #   phase >= 0.125 & phase < 0.375 ~ "Waxing",
+    #   phase >= 0.375 & phase < 0.625 ~ "Full Moon",
+    #   phase >= 0.625 & phase < 0.875 ~ "Waning"
+    # ),
+    #8 day phase detailed
     lunar_phase = case_when(
-      phase < 0.125 | phase >= 0.875 ~ "New Moon",
-      phase >= 0.125 & phase < 0.375 ~ "Waxing",
-      phase >= 0.375 & phase < 0.625 ~ "Full Moon",
-      phase >= 0.625 & phase < 0.875 ~ "Waning"
+      phase < 0.0625 | phase >= 0.9375 ~ "New Moon",
+      phase >= 0.0625 & phase < 0.1875 ~ "Waxing Crescent",
+      phase >= 0.1875 & phase < 0.3125 ~ "First Quarter",
+      phase >= 0.3125 & phase < 0.4375 ~ "Waxing Gibbous",
+      phase >= 0.4375 & phase < 0.5625 ~ "Full Moon",
+      phase >= 0.5625 & phase < 0.6875 ~ "Waning Gibbous",
+      phase >= 0.6875 & phase < 0.8125 ~ "Last Quarter",
+      phase >= 0.8125 & phase < 0.9375 ~ "Waning Crescent"
     ),
+    # # Convert to ordered factor
+    # lunar_phase = factor(lunar_phase, levels = c(
+    #   "New Moon", "Waxing", "Full Moon", "Waning"
+    # )),
     lunar_phase = factor(lunar_phase, levels = c(
-      "New Moon", "Waxing", "Full Moon", "Waning"
+      "New Moon", "Waxing Crescent", "First Quarter", "Waxing Gibbous", 
+      "Full Moon", "Waning Gibbous", "Last Quarter", "Waning Crescent"
     ))
   )
+
 
 # daylight duration
 coords_df <- RW_dailyenv %>% 
@@ -218,13 +242,106 @@ RW_dailyenv <- RW_dailyenv %>%
     cold_pool_index = factor(cold_pool_index, levels = c("Absent", "Present"))
   )
 
-#subset of data only environmental variables
-env_vars <- RW_dailyenv[, c("sst", "bottom_temp", "sss", "stratification","depth_m", 
-                            "lunar_phase", "daylight_hours", "cold_pool_index")]
+# write.csv(RW_dailyenv, "FullMaster_RWdailyenv.csv", row.names = FALSE)
 
-#subset of data only environmental variables with occurrence
-env_varsRW <- RW_dailyenv[, c("sst", "bottom_temp", "sss", "stratification","depth_m",
-                              "lunar_phase", "daylight_hours", "cold_pool_index", "DailyOccurrence")]
+num_env_vars <- RW_dailyenv[, c("Date","Site", "sst", "bottom_temp", "sss", "stratification", 
+                                "phase", "daylight_hours")]
+
+# function to create new dataframes for range of time scales with means for env variables
+resample_env <- function(df, scale = "month") {
+  df %>%
+    # Round timestamps down to the specified time unit
+    mutate(period = floor_date(Date, unit = scale)) %>%
+    # Group by the new time period
+    group_by(period, Site) %>%
+    # Calculate the mean for all numeric columns (ignoring NAs)
+    summarise(
+      across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+      .groups = "drop"
+    )
+}
+
+env_weekly <- resample_env(num_env_vars, scale = "week")
+env_weekly <- num_env_vars %>%
+  # week_start = 1 sets Monday as the start of the week
+  mutate(period = floor_date(Date, unit = "week", week_start = 1)) %>%
+  group_by(period, Site) %>%
+  summarise(
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+write.csv(env_weekly, "Env_weekly.csv", row.names = FALSE)
+
+env_biweekly <- resample_env(num_env_vars, scale = "14 days")
+
+anchor <- as.Date("2014-11-03")
+
+env_biweekly <- num_env_vars %>%
+  # Calculates 14-day chunks starting directly from your anchor date
+  mutate(period = anchor + days((as.numeric(Date - anchor) %/% 14) * 14)) %>%
+  group_by(period, Site) %>%
+  summarise(
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+    .groups = "drop"
+  )
+
+write.csv(env_biweekly, "Env_biweekly.csv", row.names = FALSE)
+
+env_monthly <- resample_env(num_env_vars, scale = "month")
+
+write.csv(env_monthly, "Env_monthly.csv", row.names = FALSE)
+
+
+
+# Load combined RW + env data on these scales -
+RWenv_wkly <- read.csv("RWenv_weekly.csv")
+
+RWenv_wkly <- RWenv_wkly %>%
+  mutate(Date = mdy(Date)) %>%
+  # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
+  mutate(device_type = as.factor(device_type),
+         period = as.factor(period),
+         Site = as.factor(Site),
+         ) %>%
+  # Sort by Site and Date
+  arrange(Site, Date)
+
+RWenv_biwkly <- read.csv("RWenv_biweekly.csv")
+
+RWenv_biwkly <- RWenv_biwkly %>%
+  mutate(Date = mdy(Date)) %>%
+  # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
+  mutate(device_type = as.factor(device_type),
+         period = as.factor(period),
+         Site = as.factor(Site),
+  ) %>%
+  # Sort by Site and Date
+  arrange(Site, Date)
+
+RWenv_mnthly <- read.csv("RWenv_monthly.csv")
+
+RWenv_mnthly <- RWenv_mnthly %>%
+  mutate(Date = mdy(Date)) %>%
+  mutate(Month = as.numeric(format(Date, "%m"))) %>%
+  # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
+  mutate(MonthCat = as.factor(Month), 
+         device_type = as.factor(device_type),
+         period = as.factor(period),
+         Site = as.factor(Site),
+         dist_200m_km = as.integer(dist_200m_km)
+  ) %>%
+  # Sort by Site and Date
+  arrange(Site, Date)
+
+
+#subset of data only environmental variables
+# env_vars <- RW_dailyenv[, c("sst", "bottom_temp", "sss", "stratification","depth_m", 
+#                             "lunar_phase", "daylight_hours", "cold_pool_index")]
+# 
+# #subset of data only environmental variables with occurrence
+# env_varsRW <- RW_dailyenv[, c("sst", "bottom_temp", "sss", "stratification","depth_m",
+#                               "lunar_phase", "daylight_hours", "cold_pool_index", "DailyOccurrence")]
 
 # GGpairs for pairwise grid - assess multicollinearity 
 
@@ -232,12 +349,74 @@ env_varsRW <- RW_dailyenv[, c("sst", "bottom_temp", "sss", "stratification","dep
 # and correlation coefficients (with significance levels) other half
 # correlation values (r) > 0.7-0.8 between two variables = highly collinear
 
-ggpairs(env_vars, 
-        title = "Pairwise Correlations of Environmental Variables",
+# WEEKLY 
+ggpairs(RWenv_wkly, 
+        title = "Weekly Pairwise Correlations",
         upper = list(continuous = wrap("cor", size = 4.5)),
         lower = list(continuous = wrap("points", alpha = 0.6, size = 1))) +
   theme_minimal()
 
+# Histogram of response variable
+hist(RWenv_wkly$percent_occurrence)
+# zero inflated distribution, effect which families might be good options
+mean(RWenv_wkly$percent_occurrence == 0) # proportion of 0s
+sort(RWenv_wkly$percent_occurrence)
+
+# Boxplots of Occurrence by different categorical variables
+p1 <- ggplot(RWenv_wkly, aes(x = Site, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") 
+p2 <- ggplot(RWenv_wkly, aes(x = period, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p3 <- ggplot(RWenv_wkly, aes(x = device_type, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+# Combine with patchwork
+(p1 | p2 | p3) +
+  plot_annotation(title = "Weekly occurrence by different categorical variables")
+
+# BI WEEKLY 
+ggpairs(RWenv_biwkly, 
+        title = "Biweekly Pairwise Correlations",
+        upper = list(continuous = wrap("cor", size = 4.5)),
+        lower = list(continuous = wrap("points", alpha = 0.6, size = 1))) +
+  theme_minimal()
+
+# Boxplots of Occurrence by different categorical variables
+p1 <- ggplot(RWenv_biwkly, aes(x = Site, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") 
+p2 <- ggplot(RWenv_biwkly, aes(x = period, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p3 <- ggplot(RWenv_biwkly, aes(x = device_type, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+# Combine with patchwork
+(p1 | p2 | p3) +
+  plot_annotation(title = "Biweekly occurrence by different categorical variables")
+
+# MONTHLY
+ggpairs(RWenv_mnthly, 
+        title = "Monthly Pairwise Correlations",
+        upper = list(continuous = wrap("cor", size = 4.5)),
+        lower = list(continuous = wrap("points", alpha = 0.6, size = 1))) +
+  theme_minimal()
+
+# Boxplots of Occurrence by different categorical variables
+p1 <- ggplot(RWenv_mnthly, aes(x = Site, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") 
+p2 <- ggplot(RWenv_mnthly, aes(x = as.factor(month), y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p3 <- ggplot(RWenv_mnthly, aes(x = period, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p4 <- ggplot(RWenv_mnthly, aes(x = device_type, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+p5 <- ggplot(RWenv_mnthly, aes(x = as.factor(dist_200m_km), y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
+# Combine with patchwork
+(p1 | p2) / (p3 | p4 | p5) +
+  plot_annotation(title = "Monthly occurrence by different categorical variables")
+
+
+
+
+###################
 
 ggpairs(env_varsRW, 
         title = "Pairwise Correlations of Environmental Vars with RW Daily Occurrence",
@@ -274,11 +453,23 @@ acf(RW_dailyenv$daylight_hours,
     lag.max = 30) # Look at a 30-day window
 
 
-ggplot(RW_dailyenv, aes(x = lunar_phase, y = DailyOccurrence)) +
-  geom_boxplot(fill = "lightblue")
 
-
-
+RW_dailyenv %>%
+  group_by(lunar_phase) %>%
+  summarize(
+    presence_rate = mean(DailyOccurrence, na.rm = TRUE),
+    n_days = n()
+  ) %>%
+  ggplot(aes(x = lunar_phase, y = presence_rate)) +
+  geom_col(fill = "darkslategrey", width = 0.6) +
+  geom_text(aes(label = paste0("n=", n_days)), vjust = -0.5, size = 3.5) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  labs(
+    title = "Whale Presence Rate by Lunar Phase",
+    x = "Lunar Phase",
+    y = "Percentage of Days Present"
+  ) +
+  theme_minimal()
 
 
 
