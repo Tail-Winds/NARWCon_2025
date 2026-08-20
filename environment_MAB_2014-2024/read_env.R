@@ -375,3 +375,4 @@ ggplot <- ggpairs(
 
 print(ggplot)
 
+cor.test(d$percent_occurrence, d$mean_chla, method = "spearman")
