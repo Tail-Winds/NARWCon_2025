@@ -6,6 +6,7 @@ date: "2026-08-11"
 
 ```{r}
 library(dplyr)
+library(lubridate)
 # library(scales)
 
 # Visualization
@@ -24,7 +25,7 @@ library(gamlss.add)
 
 ```{r}
 # Load data ----
-
+setwd("~/Documents/Documents - Caroline’s MacBook Pro/Whale_Analyses/NARWCon_2025/environment_MAB_2014-2024/master data")
 RWocc0 <- read.csv("RWenv_monthly.csv")
 RWocc <- RWocc0 %>%
     mutate(Date = mdy(Date)) %>%
@@ -109,6 +110,7 @@ with(RWocc,
 )
 
 ```
+
 ```{r}
 # Modeling ---- model used in NARW consortium 2025 presentation -- monthly % occ -- year continuous
 set.seed(123)
@@ -138,7 +140,7 @@ wp(m_RWocc0)
 ```
 
 ```{r}
-# Term plots of month and yearcat
+# Term plots of month and year
 
 par(mfrow = c(1, 2))
 
@@ -157,6 +159,7 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 
 
 ```
+GAM models with environmental covariates included, with month excluded as a variable
 
 ```{r}
 # Modeling ---- monthly - year as categorical
@@ -231,7 +234,7 @@ term.plot(m_RWocc2)
 
 ```{r}
 # BI-WEEKLY
-
+setwd("~/Documents/Documents - Caroline’s MacBook Pro/Whale_Analyses/NARWCon_2025/environment_MAB_2014-2024/master data")
 RWenv_biwkly <- read.csv("RWenv_biweekly.csv")
 
 RWenv_biwkly <- RWenv_biwkly %>%
@@ -290,7 +293,7 @@ m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
                       Site
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #zero inflated beta
+                  ,family = BEINF, #beta inflated
                 #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
                   data = RWenv_biwkly)
 summary(m_RWoccbiwk)
@@ -332,7 +335,7 @@ m_RWoccbiwk2 <- gamlss(percent_occurrence / 100 ~
                   #    Site
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #zero inflated beta
+                  ,family = BEINF, #beta inflated
                 #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
                   data = RWenv_biwkly)
 summary(m_RWoccbiwk2)
@@ -366,7 +369,7 @@ m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
                       Site
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #zero inflated beta
+                  ,family = BEINF, #beta inflated
                   control = gamlss.control(c.crit = 0.01, n.cyc = 100),
                   data = RWenv_biwkly)
 summary(m_RWoccbiwk)
@@ -375,7 +378,7 @@ summary(m_RWoccbiwk)
 
 
 ```{r}
-setwd("~/Documents/Documents - Caroline’s MacBook Pro/Manuscript_NARW Occurrence 2014-24/environment_MAB_2014-2024/master data")
+setwd("~/Documents/Documents - Caroline’s MacBook Pro/Whale_Analyses/NARWCon_2025/environment_MAB_2014-2024/master data")
 
 RWenv_wkly <- read.csv("RWEnv_weekly.csv")
 
@@ -448,7 +451,7 @@ m_RWoccwk <- gamlss(percent_occurrence / 100 ~
                       Site
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #zero inflated beta
+                  ,family = BEINF, #beta inflated
                 #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
                   data = RWenv_wkly)
 summary(m_RWoccwk)
@@ -488,7 +491,7 @@ m_RWoccbiwk2 <- gamlss(percent_occurrence / 100 ~
                   #    Site
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #zero inflated beta
+                  ,family = BEINF, #beta inflated
                 #  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
                   data = RWenv_biwkly)
 summary(m_RWoccbiwk2)
