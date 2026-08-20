@@ -2,6 +2,8 @@
 title: "NARW_GAM_ModelTesting"
 output: html_document
 date: "2026-08-11"
+editor_options: 
+  chunk_output_type: inline
 ---
 
 ```{r}
@@ -25,8 +27,9 @@ library(gamlss.add)
 
 ```{r}
 # Load data ----
-setwd("~/Documents/Documents - Caroline’s MacBook Pro/Whale_Analyses/NARWCon_2025/environment_MAB_2014-2024/master data")
-RWocc0 <- read.csv("RWenv_monthly.csv")
+#setwd("~/Documents/Documents - Caroline’s MacBook Pro/Whale_Analyses/NARWCon_2025/environment_MAB_2014-2024/master data")
+
+RWocc0 <- read.csv("environment_MAB_2014-2024/master data/RWEnv_monthly.csv")
 RWocc <- RWocc0 %>%
     mutate(Date = mdy(Date)) %>%
     mutate(Month = as.numeric(format(Date, "%m"))) %>%
@@ -92,11 +95,11 @@ p5 <- ggplot(RWocc, aes(x = as.factor(dist_200m_km), y = percent_occurrence)) +
   plot_annotation(title = "Monthly occurrence by different categorical variables")
 ```
 ```{r}
- ggplot(RWocc, aes(y=percent_occurrence, x=sst)) + geom_line()
- ggplot(RWocc, aes(y=percent_occurrence, x=sss)) + geom_line()
- ggplot(RWocc, aes(y=percent_occurrence, x=stratification)) + geom_line()
- ggplot(RWocc, aes(y=percent_occurrence, x=phase)) + geom_line()
- ggplot(RWocc, aes(y=percent_occurrence, x=bottom_temp)) + geom_line()
+ ggplot(RWocc, aes(y=percent_occurrence, x=sst)) + geom_point()
+ ggplot(RWocc, aes(y=percent_occurrence, x=sss)) + geom_point()
+ ggplot(RWocc, aes(y=percent_occurrence, x=stratification)) + geom_point()
+ ggplot(RWocc, aes(y=percent_occurrence, x=phase)) + geom_point()
+ ggplot(RWocc, aes(y=percent_occurrence, x=bottom_temp)) + geom_point()
 
 ```
 
@@ -122,16 +125,18 @@ m_RWocc0 <- gamlss(percent_occurrence / 100 ~
                       # pb(sss) +
                       # pb(phase) +
                       # ga(~s(Month, bs = "cp")) +
-                      pb(year) +
-                    #   YearCat + # seems like year as continuous is better
+                    #  pb(year) +
+                       YearCat + # seems like year as continuous is better
                       device_type + 
                       Site
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #zero inflated beta
+                  ,family = BEINF, #beta inflated
                   control = gamlss.control(c.crit = 0.01, n.cyc = 100),
                   data = RWocc)
 summary(m_RWocc0)
+
+# year as categorical can test with anova likelihood ratio test, does make sense to use as categorical with missing 2018-2020 period rather than with smooth on continuous year.
 
 ## Model diagnostics ----
 plot(m_RWocc0)
@@ -166,15 +171,15 @@ GAM models with environmental covariates included, with month excluded as a vari
 set.seed(123)
 m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                     #  ga(~ti(year, Month)) +
-                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                      scs(Month, control = cs.control(cv = FALSE)) +
                     #   scs(sst, control = cs.control(cv = FALSE)) +
-                       pb(sst) +
-                       pb(sss) +
+                    #   pb(sst) +
+                       pb(sss, max.df=5) + #3 for cubic relationships, 2 for parabolic
                        pb(phase) +
                       # ga(~s(Month, bs = "cp")) +
                     #  pb(year) +
                        YearCat + # seems like year as continuous is better
-                      device_type + 
+                   #   device_type + 
                       Site
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
@@ -194,7 +199,7 @@ m_RWocc1 <- gamlss::stepGAIC(m_RWocc1)
 plot(m_RWocc1)
 plot(m_RWocc1, ts = TRUE)
 wp(m_RWocc1)
-term.plot(m_RWocc1)
+term.plot(m_RWocc1, rug = TRUE)
 ```
 
 ```{r}
@@ -281,11 +286,11 @@ p3 <- ggplot(RWenv_biwkly, aes(x = device_type, y = percent_occurrence)) +
 set.seed(123)
 m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
                     #  ga(~ti(year, Month)) +
-                    #  scs(Month, control = cs.control(cv = FALSE)) +
+                      scs(Month, control = cs.control(cv = FALSE)) +
                     #   scs(sst, control = cs.control(cv = FALSE)) +
                        pb(sst) +
-                       pb(sss) +
-                       pb(phase) +
+                       pb(sss,max.df =9) +
+                       pb(phase, max.df =9) +
                       # ga(~s(Month, bs = "cp")) +
                      # pb(Year) +
                        YearCat +  # seems like year as continuous is better
