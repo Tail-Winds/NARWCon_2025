@@ -83,7 +83,7 @@ table(RWocc$Year, RWocc$Site)
 table(RWocc$device_type, RWocc$period)
 ```
 
-## Exploring the data on the monthly scale 
+## Exploring the data on the monthly scale
 
 ```{r}
 # Histogram of response variable - monthly
@@ -311,7 +311,7 @@ RWenv_biwkly$PercentOccurrence_l1 <- as.numeric(RWenv_biwkly$PercentOccurrence_l
 RWenv_biwkly$PercentOccurrence_l2 <- as.numeric(RWenv_biwkly$PercentOccurrence_l2)
 ```
 
-## Exploring the data on the biweekly scale 
+## Exploring the data on the biweekly scale
 
 ```{r}
 # BI WEEKLY 
@@ -364,7 +364,7 @@ m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
                     #   scs(sst, control = cs.control(cv = FALSE)) +
                        pb(sst) +
                        pb(sss,max.df =9) +
-                       pb(phase, max.df =9) +
+                       pb(phase, max.df =9, control = pb.control(inter = 6)) +
                       # ga(~s(Month, bs = "cp")) +
                      # pb(Year) +
                        YearCat +  # seems like year as continuous is better
@@ -440,7 +440,7 @@ RWenv_wkly <- na.omit(RWenv_wkly)
 
 ```
 
-## Exploring the data on the weekly scale 
+## Exploring the data on the weekly scale
 
 ```{r}
 # WEEKLY 
