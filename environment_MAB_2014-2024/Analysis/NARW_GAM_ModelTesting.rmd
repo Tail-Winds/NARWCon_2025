@@ -252,8 +252,13 @@ RWenv_biwkly <- RWenv_biwkly %>%
          period = as.factor(period),
          Site = as.factor(Site),
   ) %>%
-  # Sort by Site and Date
-  arrange(Site, Date)
+     group_by(Site) %>%
+     mutate(PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
+            PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date)) %>%
+     ungroup() %>%
+    # Sort by Site and Date
+    arrange(Site, Date)
+
 
 
 ```
