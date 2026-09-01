@@ -48,10 +48,10 @@ RWocc <- RWocc0 %>%
            device_type = as.factor(device_type),
            dist_200m_km = as.integer(dist_200m_km)) %>%
     # Create lagged values of PercentOccurrence, by Site
-    # group_by(Site) %>%
-    # mutate(PercentOccurrence_l1 = dplyr::lag(PercentOccurrence, 1, order_by = Date),
-    #        PercentOccurrence_l2 = dplyr::lag(PercentOccurrence, 2, order_by = Date)) %>%
-    # ungroup() %>%
+     group_by(Site) %>%
+     mutate(PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
+            PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date)) %>%
+     ungroup() %>%
     # Sort by Site and Date
     arrange(Site, Date)
 
@@ -75,12 +75,17 @@ RWocc <- RWocc %>%
     # Convert to a factor
     cold_pool_index = factor(cold_pool_index, levels = c("Absent", "Present"))
   )
+
+RWocc <- na.omit(RWocc)
+
+RWocc$PercentOccurrence_l1 <- as.numeric(RWocc$PercentOccurrence_l1)
+RWocc$PercentOccurrence_l2 <- as.numeric(RWocc$PercentOccurrence_l2)
 ```
 
 ```{r}
 # Sample sizes for different combinations
-table(RWocc$Year, RWocc$Site)
-table(RWocc$device_type, RWocc$period)
+#table(RWocc$Year, RWocc$Site)
+#table(RWocc$device_type, RWocc$period)
 ```
 
 ## Exploring the data on the monthly scale
@@ -236,7 +241,9 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                     #  pb(year) +
                        YearCat + # seems like year as continuous is better
                       device_type + 
-                      Site 
+                      Site +
+                      PercentOccurrence_l1 + 
+                      PercentOccurrence_l2,
                    #   period
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
