@@ -9,6 +9,22 @@ library(scales)
 # getwd()
 # setwd("~/Desktop/KirstensWork/Progress reports/FinalReport")
 
+
+# Only sites A-7M and RTWB for archival vs real time plot
+WhaleOcc_rtwb <- read.csv("DataRaw/NARWOccurrence2021_2022_RTWBonly.csv")
+
+
+D_rtwb <- WhaleOcc_rtwb %>%
+    mutate(
+        #Year = ifelse(Month %in% month.name[1:10], Year),  #Year + 1
+        Date = as.Date(paste(Year, Month, "01", sep = "-"), format = "%Y-%b-%d"))
+        # ArchivalPeriod = case_when(
+        #     DeviceType == "Archival" & Date < as.Date("2018-01-01") ~ 1,
+        #     DeviceType == "Archival" & Date >= as.Date("2023-01-01") ~ 2,
+        #     TRUE ~ 0 # Or NA, for other devices/gaps
+        #)
+
+
 # Only sites A-7M and RTWB for archival vs real time plot
 WhaleOcc <- read.csv("DataRaw/NARWOccurrence2014_2024_A7MandRTWBonly.csv")
 
@@ -41,48 +57,45 @@ D_all <- WhaleOcc_all %>%
   # D$DeviceType[D$Year >= 2021] = "Real Time"
 
 
+# To show 2 years of RTWB monitoring 2021-2022
 
-  #Dw_long <- Dw_wide %>%
-      #pivot_longer(
-          #cols = -c(Month, Year, Study, Date),  # Keep these as ID columns
-          #names_to = "Species",
-          #values_to = "PercentOccurrence"
-      #)
-
-#write.csv(D, "WhaleOccurrence_2014_2024_082725.csv", row.names = FALSE)
-
-# MANOVA ----
-mlm0 <- lm(cbind(FinWhale, NARW, HumpbackWhale) ~ #-1 #, FreqDelta
-             Month
-           #+ as.factor(Year)
-           + Year
-           + Study
-           ,data = Dw)
-summary(mlm0)
-
-car::Manova(mlm0)
-
-# ANOVA F-tests
-
-lm_FinWhale <- lm(FinWhale ~ Month
-           + Year
-           + Study
-           ,data = Dw)
-car::Anova(lm_FinWhale)
+jpeg("PercentOcc_2021_2022_RTWB.jpeg", width = 1900, height = 1000, res = 250)
 
 
-lm_HumpbackWhale <- lm(HumpbackWhale ~ Month
-                  + Year
-                  + Study
-                  ,data = Dw)
-car::Anova(lm_HumpbackWhale)
+# Assuming your data frame is named 'D'
+
+ggplot(D_rtwb, aes(x = Date, y = PercentOccurrence)) +
+
+    # 1. Plot Archival Data (Behind and Transparent)
+    # The Archival data is plotted first, using filter() to select it
+    geom_line(
+        aes(color = DeviceType),
+        linewidth = 1.2,
+        alpha = 0.8 # <--- No alpha here (or alpha = 1)
+    ) +
+
+    # The rest of your code remains the same
+    scale_x_date(
+        date_labels = "%B %Y",
+        date_breaks = "2 month"
+    ) +
+    scale_y_continuous(limits=c(0,100)) +
+    scale_color_manual(
+        # The color values define the colors for the legends and lines
+        values = c("Real Time" = "#377eb8"),
+        breaks = c("Real Time")
+    ) +
+    # NOTE: You don't need scale_linetype_manual if both are "solid"
+    theme_minimal() +
+    labs(
+        y = "Percent Occurrence",
+        x = "Date"
+    ) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+dev.off()
 
 
-lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
-                       + Year
-                       + Study
-                       ,data = Dw)
-car::Anova(lm_NARW)
 
 #To show A7M and RTWB as Archival vs Real Time plot
 
@@ -105,8 +118,8 @@ ggplot(D, aes(x = Date, y = PercentOccurrence)) +
     # 2. Plot Real Time Data (In Front and Opaque)
     # The Real Time data is plotted second, ensuring it appears on top
     geom_line(
-        data = filter(D, Site == "RTWB"),
-        aes(color = Site, group = interaction(Site, ArchivalPeriod)),
+        data = filter(D, DeviceType == "Real Time"),
+        aes(color = DeviceType, group = interaction(DeviceType, ArchivalPeriod)),
         linewidth = 1.2,
         alpha = 0.8 # <--- No alpha here (or alpha = 1)
     ) +
@@ -133,7 +146,7 @@ ggplot(D, aes(x = Date, y = PercentOccurrence)) +
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-
+dev.off()
 
 #To make figure showing all sites percent occcurrence not just A-7M and RTWB
 
@@ -247,6 +260,53 @@ geom_line(
         color = "DeviceType" # Ensure the legend title is correct
     ) +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+#Dw_long <- Dw_wide %>%
+#pivot_longer(
+#cols = -c(Month, Year, Study, Date),  # Keep these as ID columns
+#names_to = "Species",
+#values_to = "PercentOccurrence"
+#)
+
+#write.csv(D, "WhaleOccurrence_2014_2024_082725.csv", row.names = FALSE)
+
+# MANOVA ----
+# mlm0 <- lm(cbind(FinWhale, NARW, HumpbackWhale) ~ #-1 #, FreqDelta
+#              Month
+#            #+ as.factor(Year)
+#            + Year
+#            + Study
+#            ,data = Dw)
+# summary(mlm0)
+#
+# car::Manova(mlm0)
+#
+# # ANOVA F-tests
+#
+# lm_FinWhale <- lm(FinWhale ~ Month
+#            + Year
+#            + Study
+#            ,data = Dw)
+# car::Anova(lm_FinWhale)
+#
+#
+# lm_HumpbackWhale <- lm(HumpbackWhale ~ Month
+#                   + Year
+#                   + Study
+#                   ,data = Dw)
+# car::Anova(lm_HumpbackWhale)
+#
+#
+# lm_NARW <- lm(NARW ~ Month #percent presence ~ month, year, period, device
+#                        + Year
+#                        + Study
+#                        ,data = Dw)
+# car::Anova(lm_NARW)
+
+
 
 ########################################## Caroline's old code adjusted Oct 8, 2025
 # ggplot(D, aes(x = Date, y = PercentOccurrence, color = DeviceType)) +
