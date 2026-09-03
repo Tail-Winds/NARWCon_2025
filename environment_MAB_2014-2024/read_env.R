@@ -173,8 +173,12 @@ RW_dailyenv <- RW_dailyenv %>%
 moon_raw <- getMoonIllumination(date = RW_dailyenv$Date) %>%
     select(date, phase)
 
+# Keep only the first unique entry per date
+moon_clean <- moon_raw %>%
+    distinct(date, .keep_all = TRUE)
+
 RW_dailyenv <- RW_dailyenv %>%
-    left_join(moon_raw, by = "date") %>%
+    left_join(moon_clean, by = "date") %>%
     mutate(
         # 4-Phase categorization
         # lunar_phase = case_when(
@@ -236,6 +240,11 @@ RW_dailyenv <- RW_dailyenv %>%
     # Convert to a factor
     cold_pool_index = factor(cold_pool_index, levels = c("Absent", "Present"))
   )
+
+write.csv(RW_dailyenv, "FullMaster_RWdailyenv.csv", row.names = FALSE)
+
+num_env_vars <- RW_dailyenv[, c("Date","Site", "sst", "bottom_temp", "sss", "stratification",
+                                "phase", "daylight_hours")]
 
 #subset of data only environmental variables
 env_vars <- RW_dailyenv[, c("sst", "bottom_temp", "sss", "stratification","depth_m",
