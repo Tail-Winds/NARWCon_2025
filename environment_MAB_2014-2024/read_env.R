@@ -434,7 +434,7 @@ env_weekly <- num_env_vars %>%
 
 write.csv(env_weekly, "Env_weekly.csv", row.names = FALSE)
 
-env_biweekly <- resample_env(num_env_vars, scale = "14 days")
+#env_biweekly <- resample_env(num_env_vars, scale = "14 days")
 
 anchor <- as.Date("2014-11-03")
 
