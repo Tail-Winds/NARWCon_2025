@@ -168,6 +168,14 @@ RW_dailyenv <- RW_dailyenv0 %>%
 RW_dailyenv <- RW_dailyenv %>%
   mutate(date = as.Date(Date))
 
+# Load sst anomaly data --
+sstanom <- read.csv("Allsites_jplMURSST41_sstanomaly_1day.csv")%>%
+    mutate(Date = mdy(Date)) %>%
+    select(Date, sstAnom, Site)
+
+RW_dailyenv <- RW_dailyenv %>%
+    left_join(sstanom, by = c("Date","Site"))
+
 
 # lunar phase
 moon_raw <- getMoonIllumination(date = RW_dailyenv$Date) %>%
@@ -244,7 +252,7 @@ RW_dailyenv <- RW_dailyenv %>%
 write.csv(RW_dailyenv, "FullMaster_RWdailyenv.csv", row.names = FALSE)
 
 num_env_vars <- RW_dailyenv[, c("Date","Site", "sst", "bottom_temp", "sss", "stratification",
-                                "phase", "daylight_hours")]
+                                "phase", "daylight_hours", "sstAnom")]
 
 #subset of data only environmental variables
 env_vars <- RW_dailyenv[, c("sst", "bottom_temp", "sss", "stratification","depth_m",
