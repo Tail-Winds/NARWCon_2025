@@ -40,10 +40,10 @@ library(gamlss.add)
 RWocc0 <- read.csv("RWEnv_monthly.csv")
 RWocc <- RWocc0 %>%
     mutate(Date = mdy(Date)) %>%
-    mutate(Month = as.numeric(format(Date, "%m"))) %>%
+    mutate(Month = as.numeric(format(Date, "%m")),
+           Year = year(Date)) %>%
     # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
-    mutate(MonthCat = as.factor(month),
-           period = as.factor(period),
+    mutate(period = as.factor(period),
            Site = as.factor(Site),
            SongYear = as.factor(SongYear),
            device_type = as.factor(device_type),
@@ -59,10 +59,9 @@ RWocc <- RWocc0 %>%
 #order period
 RWocc$period <- factor(RWocc$period, levels = c("1","2"))
 
-# Change year to categorical
-RWocc$YearCat <- as.factor(RWocc$year)
+
 # Showing year is in chronological order - 2014 only includes 11/3 to 12/31 of that year
-RWocc$YearCat <- factor(RWocc$SongYear, levels = c("Year1", "Year2", "Year3", "Year4", "Year5", "Year6", "Year7", "Year8"))
+RWocc$SongYear <- factor(RWocc$SongYear, levels = c("Year1", "Year2", "Year3", "Year4", "Year5", "Year6", "Year7", "Year8"))
 
 
 # Create the index as a categorical factor on monthly level - may show little
@@ -102,7 +101,7 @@ hist(RWocc$percent_occurrence)
 # MONTHLY
 
 #subset of data only environmental variables + percent occurrence
-monthenv_vars <- RWocc[, c("Date", "SongYear", "Site", "sst", "bottom_temp", "sss", "stratification",
+monthenv_vars <- RWocc[, c("Date", "SongYear", "Site", "sst", "bottom_temp", "sss", "stratification", "sstAnom",
                            "phase", "device_type", "Month","period" , "daylight_hours",
                           "cold_pool_index", "dist_200m_km", "percent_occurrence")]
 
@@ -120,7 +119,7 @@ ggpairs(monthenv_vars,
 # Boxplots of Occurrence by different categorical variables
 p1 <- ggplot(RWocc, aes(x = Site, y = percent_occurrence)) +
   geom_boxplot(fill = "lightblue") 
-p2 <- ggplot(RWocc, aes(x = as.factor(month), y = percent_occurrence)) +
+p2 <- ggplot(RWocc, aes(x = as.factor(Month), y = percent_occurrence)) +
   geom_boxplot(fill = "lightblue")
 p3 <- ggplot(RWocc, aes(x = period, y = percent_occurrence)) +
   geom_boxplot(fill = "lightblue")
@@ -146,11 +145,11 @@ c5 <- ggplot(RWocc, aes(y=percent_occurrence, x=bottom_temp)) + geom_point()
  
  # Interaction plot
  with(RWocc,
-     interaction.plot(YearCat, device_type, percent_occurrence)
+     interaction.plot(SongYear, device_type, percent_occurrence)
 )
+ 
  with(RWocc,
-     interaction.plot(YearCat, MonthCat, percent_occurrence, col = MonthCat)
-)
+     interaction.plot(SongYear, as.factor(Month), percent_occurrence, col = as.factor(Month)))
 
 
 ```
@@ -169,7 +168,7 @@ m_RWocc0 <- gamlss(percent_occurrence / 100 ~
                       # pb(phase) +
                       # ga(~s(Month, bs = "cp")) +
                     #  pb(year) +
-                       YearCat + # seems like year as continuous is better
+                       pb(Year) + 
                       device_type + 
                       Site
                   # + pvc(Month, by = Site)
@@ -210,21 +209,21 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 
 #### Variables tested against percent occurrence response variable:
 
-- **Month**, continuous with a cyclic cubic spline
+-   **Month**, continuous with a cyclic cubic spline
 
-- **Year** (YearCat), categorical ordered factor (chronological)
+-   **Song Year,** Nov 1 to Oct 31
 
-  - Chose not to run year as continuous due to the 2018-2020 gap period, feel it makes more sense to use as categorical. Previously we re-ordered the data to start at 2015 as the year to compare with, here I have left it in chronological order.
+-   **Sea surface temp anomalies** (sstAnom), continuous with p spline
 
-- **Sea surface temp** (sst), continuous with p spline
+-   **Stratification** (stratification), continuous with p spline
 
-- **Sea surface salinity** (sss), continuous with p spline
+-   **Sea surface salinity** (sss), continuous with p spline
 
-- **Percent moon illumination** (phase), continuous with p spline
+-   **Percent moon illumination** (phase), continuous with p spline
 
-- **Device type** (device_type), categorical - archival or real time
+-   **Device type** (device_type), categorical - archival or real time
 
-- **Site**, categorical
+-   **Site**, categorical
 
 ## Monthly Percent Occurrence Model
 
@@ -235,12 +234,13 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                     #  ga(~ti(year, Month)) +
                       scs(Month, control = cs.control(cv = FALSE)) +
                     #   scs(sst, control = cs.control(cv = FALSE)) +
-                       pb(sst) +
+                       pb(sstAnom) +
+                       pb(stratification) +
                        pb(sss, max.df=10) + #3 for cubic relationships, 2 for parabolic
-                       pb(phase) +
+                    #   pb(phase) + # w AIC = 68.37
                       # ga(~s(Month, bs = "cp")) +
                     #  pb(year) +
-                       SongYear + # seems like year as continuous is better
+                       SongYear + 
                       device_type + 
                       Site +
                       PercentOccurrence_l1 + #accounts for lag
@@ -253,10 +253,6 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                   data = RWocc)
 summary(m_RWocc1)
 
-# Select model based on AIC
-m_RWocc1 <- gamlss::stepGAIC(m_RWocc1)
-    # drops sst 
-
 ## Model diagnostics ----
 plot(m_RWocc1)
 plot(m_RWocc1, ts = TRUE)
@@ -265,6 +261,20 @@ wp(m_RWocc1)
 
 term.plot(m_RWocc1, rug = TRUE)
 
+```
+
+```{r}
+# Select model based on AIC
+m_RWocc1 <- gamlss::stepGAIC(m_RWocc1)
+   
+
+## Model diagnostics ----
+plot(m_RWocc1)
+plot(m_RWocc1, ts = TRUE)
+wp(m_RWocc1)
+
+
+term.plot(m_RWocc1, rug = TRUE)
 ```
 
 ## Load Biweekly Data
@@ -281,7 +291,7 @@ RWenv_biwkly <- RWenv_biwkly %>%
          Year = as.numeric(format(Date, "%Y"))) %>%
   # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
   mutate(device_type = as.factor(device_type),
-         YearCat = as.factor(Year),
+         SongYear = as.factor(SongYear),
          period = as.factor(period),
          Site = as.factor(Site),
   ) %>%
@@ -296,9 +306,7 @@ RWenv_biwkly <- RWenv_biwkly %>%
 # order period
 RWenv_biwkly$period <- factor(RWenv_biwkly$period, levels = c("1","2"))
 
-# Change year to categorical
-RWenv_biwkly$YearCat <- as.factor(RWenv_biwkly$Year)
-RWenv_biwkly$YearCat <- factor(RWenv_biwkly$Year, levels = c("2014", "2015", "2016", "2017", "2021", "2022", "2023", "2024"))
+RWenv_biwkly$SongYear <- factor(RWenv_biwkly$SongYear, levels = c("Year1", "Year2", "Year3", "Year4", "Year5", "Year6", "Year7", "Year8"))
 
 
 # Create the index as a categorical factor on monthly level - may show little
@@ -326,7 +334,7 @@ RWenv_biwkly$PercentOccurrence_l2 <- as.numeric(RWenv_biwkly$PercentOccurrence_l
 
 #subset of data only environmental variables + percent occurrence
 biwkenv_vars <- RWenv_biwkly[, c("Date", "Site", "sst", "bottom_temp","sss","stratification", 
-                                 "phase", "device_type", "Month","period", "daylight_hours",
+                        "sstAnom", "phase", "device_type", "Month","period", "daylight_hours",
                            "cold_pool_index","percent_occurrence")]
 
 ggpairs(biwkenv_vars, 
@@ -351,9 +359,12 @@ p2 <- ggplot(RWenv_biwkly, aes(x = period, y = percent_occurrence)) +
   geom_boxplot(fill = "lightblue")
 p3 <- ggplot(RWenv_biwkly, aes(x = device_type, y = percent_occurrence)) +
   geom_boxplot(fill = "lightblue")
+p4 <- ggplot(RWenv_biwkly, aes(x = SongYear, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue")
 # Combine with patchwork
-(p1 | p2 | p3) +
+(p1 | p2 ) / ( p3 | p4) +
   plot_annotation(title = "Biweekly occurrence by different categorical variables")
+
 
 
 ```
@@ -370,15 +381,17 @@ m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
                     #  ga(~ti(year, Month)) +
                       scs(Month, control = cs.control(cv = FALSE)) +
                     #   scs(sst, control = cs.control(cv = FALSE)) +
-                       pb(sst) +
+                       pb(sstAnom) +
+                        pb(stratification) +
                        pb(sss,max.df =9) +
-                       pb(phase, max.df =9, control = pb.control(inter = 6)) +
+                       pb(phase, max.df =8, control = pb.control(inter = 5)) +
                       # ga(~s(Month, bs = "cp")) +
                      # pb(Year) +
-                       YearCat +  # seems like year as continuous is better
+                       SongYear +  
                       device_type + 
-                      Site
-                    + PercentOccurrence_l1 + PercentOccurrence_l2,
+                    cold_pool_index +
+                      Site +
+                     PercentOccurrence_l1 + PercentOccurrence_l2,
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
                   ,family = BEINF, #beta inflated
@@ -412,7 +425,7 @@ RWenv_wkly <- RWenv_wkly %>%
          Year = as.numeric(format(Date, "%Y"))) %>%
   # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
   mutate(device_type = as.factor(device_type),
-         YearCat = as.factor(Year),
+         SongYear = as.factor(SongYear),
          period = as.factor(period),
          Site = as.factor(Site),
         ) %>%
@@ -429,8 +442,7 @@ RWenv_wkly <- RWenv_wkly %>%
 RWenv_wkly$period <- factor(RWenv_wkly$period, levels = c("1","2"))
 
 # Change year to categorical
-RWenv_wkly$YearCat <- as.factor(RWenv_wkly$Year)
-RWenv_wkly$YearCat <- factor(RWenv_wkly$Year, levels = c("2014", "2015", "2016", "2017", "2021", "2022", "2023", "2024"))
+RWenv_wkly$SongYear <- factor(RWenv_wkly$SongYear, levels = c("Year1", "Year2", "Year3", "Year4", "Year5", "Year6", "Year7", "Year8"))
 
 
 # Create the index as a categorical factor on monthly level - may show little
@@ -456,7 +468,7 @@ RWenv_wkly <- na.omit(RWenv_wkly)
 #subset of data only environmental variables + percent occurrence
 wkenv_vars <- RWenv_wkly[, c("Date", "Site", "sst", "bottom_temp", "sss","stratification",
                             "phase", "device_type", "Month","period" , "daylight_hours",
-                           "cold_pool_index", "percent_occurrence")]
+                           "cold_pool_index", "sstAnom", "percent_occurrence")]
 
 ggpairs(wkenv_vars, 
         title = "Weekly Pairwise Correlations",
@@ -464,20 +476,6 @@ ggpairs(wkenv_vars,
         upper = list(continuous = wrap("cor", size = 4.5)),
         lower = list(combo = wrap("facethist", binwidth = 0.5)))  +
   theme_minimal()
-
-```
-
-```{r}
-# Boxplots of Occurrence by different categorical variables
-p1 <- ggplot(RWenv_wkly, aes(x = Site, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue") 
-p2 <- ggplot(RWenv_wkly, aes(x = period, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
-p3 <- ggplot(RWenv_wkly, aes(x = device_type, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
-# Combine with patchwork
-(p1 | p2 | p3) +
-  plot_annotation(title = "Weekly occurrence by different categorical variables")
 
 ```
 
@@ -513,15 +511,17 @@ m_RWoccwk <- gamlss(percent_occurrence / 100 ~
                     #  ga(~ti(year, Month)) +
                       scs(Month, control = cs.control(cv = FALSE)) +
                       # scs(sst, control = cs.control(cv = FALSE)) +
-                       pb(sst) +
+                       pb(sstAnom) +
+                        pb(stratification) +
                        pb(sss,max.df =9, inter=10) + 
                        pb(phase,max.df =9, inter=10) +
                       # ga(~s(Month, bs = "cp")) +
                      # pb(Year) +
-                       YearCat +  # seems like year as continuous is better
+                       SongYear +  # seems like year as continuous is better
                       device_type +
-                      Site 
-                    + PercentOccurrence_l1 + PercentOccurrence_l2,
+                      Site +
+                     cold_pool_index +
+                     PercentOccurrence_l1 + PercentOccurrence_l2,
                   # + pvc(Month, by = Site)
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
                   ,family = BEINF, #beta inflated
