@@ -307,15 +307,29 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
                   family = BEINF, #beta inflated
                   control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-                  data = RWocc)
+                  data = RWocc_noNA)
+AIC(m_RWocc1) #63.76283
 summary(m_RWocc1)
 
-## Model diagnostics ----
+## Model diagnostics
+
 plot(m_RWocc1)
 plot(m_RWocc1, ts = TRUE)
 wp(m_RWocc1)
 
+m_resid <- tibble(res = resid(m_RWocc1),
+                Date = RWocc_noNA$Date,
+                Site = RWocc_noNA$Site,
+                SongYear = RWocc_noNA$SongYear) |> 
+    group_by(Site, SongYear) |>
+    mutate(res_lag1 = dplyr::lag(res, 1, order_by = Date),
+           res_lag2 = dplyr::lag(res, 2, order_by = Date)) |>
+    ungroup()
 
+cor.test(m_resid$res, m_resid$res_lag1)
+cor.test(m_resid$res, m_resid$res_lag2)
+
+# Model inference
 term.plot(m_RWocc1, rug = TRUE)
 
 ```
