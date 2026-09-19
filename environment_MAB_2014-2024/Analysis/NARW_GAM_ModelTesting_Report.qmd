@@ -56,9 +56,16 @@ RWocc <- RWocc0 %>%
            device_type = as.factor(device_type),
            dist_200m_km = as.integer(dist_200m_km)) %>%
     # Create lagged values of PercentOccurrence, by Site
-     group_by(Site, SongYear) %>%
-     mutate(PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
-            PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date)) %>%
+    # Group by period (not SongYear) so lags aren't reset every Nov 1, since months are
+    # continuous across SongYear boundaries within a period (only period 1->2 has a real gap)
+     arrange(Site, period, Date) %>%
+     group_by(Site, period) %>%
+     mutate(gap_days = as.numeric(Date - dplyr::lag(Date)),
+            PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
+            PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date),
+            # invalidate lags that would bridge a real within-period data gap (>32 days)
+            PercentOccurrence_l1 = if_else(!is.na(gap_days) & gap_days > 32, NA_real_, PercentOccurrence_l1),
+            PercentOccurrence_l2 = if_else(dplyr::lead(gap_days, 1) > 32 | gap_days > 32, NA_real_, PercentOccurrence_l2)) %>%
      ungroup() %>%
     # Sort by Site and Date
     arrange(Site, Date) |> 
@@ -232,7 +239,7 @@ m_RWocc0 <- gamlss(percent_occurrence / 100 ~
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
                   ,family = BEINF, #beta inflated
                   control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-                  data = RWocc |> dplyr::select(-PercentOccurrence_l1, -PercentOccurrence_l2))
+                  data = RWocc |> dplyr::select(-gap_days, -PercentOccurrence_l1, -PercentOccurrence_l2))
 summary(m_RWocc0)
 
 # year as categorical can test with anova likelihood ratio test, does make sense to use as categorical with missing 2018-2020 period rather than with smooth on continuous year.
@@ -286,29 +293,28 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 
 ```{r}
 # Modeling ---- monthly - year as categorical
+# sstAnom vs sst chosen empirically: swapping in pb(sst) for pb(sstAnom) (all else equal)
+# gives worse AIC (57.3 vs 48.2) and more autocorrelated site-period series, so sstAnom is kept.
+# Site-specific seasonality via pvc(Month, by = Site) (replacing scs(Month) + Site) resolves the
+# residual autocorrelation that persisted under the shared-seasonality specification.
+# Zero-occurrence months cluster strongly in summer, so nu (P(exact zero) in BEINF) is modeled
+# seasonally too (cyclic spline, matching the mu Month term); this removes the remaining pooled
+# lag-1 autocorrelation that a season-blind nu left unexplained (AIC -66.6 vs 20.5, nu term p=0.003).
 set.seed(123)
 m_RWocc1 <- gamlss(percent_occurrence / 100 ~
-                    #  ga(~ti(year, Month)) +
-                      scs(Month, control = cs.control(cv = FALSE)) +
-                    #   scs(sst, control = cs.control(cv = FALSE)) +
+                      pvc(Month, by = Site) +
                        pb(sstAnom) +
                        pb(stratification) +
                        pb(sss, max.df=10) + #3 for cubic relationships, 2 for parabolic
-                    #   pb(phase) + # w AIC = 68.37
-                      # ga(~s(Month, bs = "cp")) +
-                    #  pb(year) +
                        SongYear + 
                       device_type + 
-                      Site +  
                       PercentOccurrence_l1 + #accounts for lag
                       PercentOccurrence_l2,
-                   #   period
-                  # + pvc(Month, by = Site)
-                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
+                  nu.formula = ~ scs(Month, control = cs.control(cv = FALSE)), #seasonal zero-inflation
                   family = BEINF, #beta inflated
                   control = gamlss.control(c.crit = 0.01, n.cyc = 100),
                   data = RWocc_noNA)
-AIC(m_RWocc1) #63.76283
+AIC(m_RWocc1) #-66.60372
 summary(m_RWocc1)
 
 ## Model diagnostics
@@ -317,36 +323,52 @@ plot(m_RWocc1)
 plot(m_RWocc1, ts = TRUE)
 wp(m_RWocc1)
 
+# Ljung-Box test per Site x period continuous series (not per SongYear, since months are
+# continuous across SongYear boundaries within a period)
 m_resid <- tibble(res = resid(m_RWocc1),
                 Date = RWocc_noNA$Date,
                 Site = RWocc_noNA$Site,
-                SongYear = RWocc_noNA$SongYear) |> 
-    group_by(Site, SongYear) |>
-    mutate(res_lag1 = dplyr::lag(res, 1, order_by = Date),
-           res_lag2 = dplyr::lag(res, 2, order_by = Date)) |>
-    ungroup()
+                period = RWocc_noNA$period) |>
+  arrange(Site, period, Date) |> 
+  group_by(Site, period) |>
+  mutate(res_lag1 = dplyr::lag(res, 1, order_by = Date),
+         res_lag2 = dplyr::lag(res, 2, order_by = Date)) |>
+  ungroup()
 
+m_resid |>
+    group_by(Site, period) |>
+    filter(n() > 4) |>
+    summarise(n = n(),
+              lag1_p = Box.test(res, lag = 1, type = "Ljung-Box")$p.value,
+              lag2_p = Box.test(res, lag = 2, type = "Ljung-Box")$p.value,
+              .groups = "drop")
+
+# Pooling site-period series here mixes true within-series persistence with any
+# regional signal shared across sites in the same calendar month, unlike the per-group tests above
 cor.test(m_resid$res, m_resid$res_lag1)
 cor.test(m_resid$res, m_resid$res_lag2)
 
 # Model inference
+par(mfrow = c(3, 3))
 term.plot(m_RWocc1, rug = TRUE)
 
 ```
 
-```{r}
-# Select model based on AIC
-m_RWocc1 <- gamlss::stepGAIC(m_RWocc1)
-   
+Note on getting here: without a seasonal `nu.formula`, the pooled `cor.test` above stayed
+significant at lag 1 (r ~ 0.33) even though no individual Site x period series was. Tighter/
+BIC-penalized mu smoothing, nonlinear `pb(PercentOccurrence_l1)`, a lag1-by-Site interaction, and
+a Cochrane-Orcutt-style lagged-residual covariate all failed to remove it (some worsened per-group
+results or AIC substantially). Modeling nu seasonally instead of constant removed it directly:
+summer's near-total absence of whales was previously being partially absorbed into the mu residual
+structure (as consecutive near-zero months), which read as autocorrelation; letting P(exact zero)
+vary by Month resolves both the pooled test (lag1 p = 0.27-0.46 depending on nu smooth choice) and
+all per-group tests.
 
-## Model diagnostics ----
-plot(m_RWocc1)
-plot(m_RWocc1, ts = TRUE)
-wp(m_RWocc1)
-
-
-term.plot(m_RWocc1, rug = TRUE)
-```
+Note: `stepGAIC` still further simplifies mu (dropping stratification, device_type, and
+PercentOccurrence_l2) and lowers AIC to ~-75, but that simpler mu reintroduces significant
+lag-1 autocorrelation for one series (T2M/period 2, p = 0.039). Since non-significant lag-1/lag-2
+autocorrelation for every series is a requirement here, the fuller mu specification above is kept
+as final rather than the AIC-minimal stepwise result.
 
 ## Load Biweekly Data
 
