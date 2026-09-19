@@ -1,5 +1,5 @@
 ---
-title: "NARW_GAM_Models"
+title: "NARW Occurrence GAM Model Testing"
 format: html
 self-contained: true
 editor: visual
@@ -7,13 +7,19 @@ fig-width: 12
 fig-height: 12
 out-width: "100%"
 toc: true
+knitr:
+    opts_chunk:
+        echo: true
+        collapse: false
+        message: false
+        warning: false
+        comment: "#>"
 ---
 
-# NARW Occurrence GAM Model Testing
-
-## Packages
+# Packages
 
 ```{r}
+rm(list = ls())
 library(dplyr)
 library(lubridate)
 # library(scales)
@@ -28,131 +34,182 @@ library(GGally)
 library(gamlss)
 # library(gamlss.tr)
 library(gamlss.add)
- library(mgcv)
+library(mgcv)
 ```
 
-## Load Monthly Data
+
+# Load Monthly Data
 
 ```{r}
-# Load data ----
-#setwd("~/Documents/Documents - Caroline’s MacBook Pro/Whale_Analyses/NARWCon_2025/environment_MAB_2014-2024/master data")
-
 RWocc0 <- read.csv("RWEnv_monthly.csv")
 RWocc <- RWocc0 %>%
     mutate(Date = mdy(Date)) %>%
     mutate(Month = as.numeric(format(Date, "%m")),
            Year = year(Date)) %>%
+    # Add decimal year
+    mutate(YearDec = Year + (Month - 0.5) / 12) %>%
     # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
-    mutate(period = as.factor(period),
+    mutate(period = factor(period, levels = c("1", "2")),
            Site = as.factor(Site),
-           SongYear = as.factor(SongYear),
+           SongYear = factor(SongYear, levels = paste0("Year", 1:8)),
+           MonthFactor = factor(Month, levels = c(11, 12, 1:10)),
            device_type = as.factor(device_type),
            dist_200m_km = as.integer(dist_200m_km)) %>%
     # Create lagged values of PercentOccurrence, by Site
-     group_by(Site) %>%
+     group_by(Site, SongYear) %>%
      mutate(PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
             PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date)) %>%
      ungroup() %>%
     # Sort by Site and Date
-    arrange(Site, Date)
+    arrange(Site, Date) |> 
+    # Create the cold pool index as a categorical factor on monthly level
+    mutate(cold_pool_index = if_else(stratification >= 0.2 & bottom_temp <= 10,
+                                     "Present",
+                                     "Absent") |> factor(levels = c("Absent", "Present"))
+    )
 
-#order period
-RWocc$period <- factor(RWocc$period, levels = c("1","2"))
+summary(RWocc)
 
-
-# Showing year is in chronological order - 2014 only includes 11/3 to 12/31 of that year
-RWocc$SongYear <- factor(RWocc$SongYear, levels = c("Year1", "Year2", "Year3", "Year4", "Year5", "Year6", "Year7", "Year8"))
-
-
-# Create the index as a categorical factor on monthly level - may show little
-RWocc <- RWocc %>%
-  mutate(
-    cold_pool_index = if_else(
-      stratification >= 0.2 & bottom_temp <= 10,
-      "Present",
-      "Absent"
-    ),
-    # Convert to a factor
-    cold_pool_index = factor(cold_pool_index, levels = c("Absent", "Present"))
-  )
-
-RWocc <- na.omit(RWocc)
-
-RWocc$PercentOccurrence_l1 <- as.numeric(RWocc$PercentOccurrence_l1)
-RWocc$PercentOccurrence_l2 <- as.numeric(RWocc$PercentOccurrence_l2)
+# Subset without non-missing data (due to lags), if needed for modeling
+RWocc_noNA <- na.omit(RWocc)
 ```
 
 ```{r}
 # Sample sizes for different combinations
-#table(RWocc$Year, RWocc$Site)
-#table(RWocc$device_type, RWocc$period)
+table(RWocc$Year, RWocc$Site)
+table(RWocc$device_type, RWocc$period)
 ```
+
 
 ## Exploring the data on the monthly scale
 
 ```{r}
 # Histogram of response variable - monthly
-hist(RWocc$percent_occurrence)
-
-#zero inflated distribution
+ggplot(RWocc, aes(x = percent_occurrence)) +
+  geom_histogram(binwidth = 10, boundary = 0, fill = "lightblue", color = "black") +
+  scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  scale_y_continuous(expand = expansion(mult = c(0.03, 0.05))) +
+  labs(title = "Histogram of Monthly Percent Occurrence",
+       x = "Percent occurrence",
+       y = "Frequency") +
+  theme_minimal()
 ```
+
+Count of zeros and proportion of zeros
+```{r}
+c(sum(RWocc$percent_occurrence == 0), 
+  mean(RWocc$percent_occurrence == 0))
+```
+
+Based on the histogram and the proportion of zeros, it appears that the monthly percent occurrence data is highly skewed with a significant number of zero values. This suggests that a zero inflated distribution might be appropriate.
+
 
 ```{r}
 # MONTHLY
 
-#subset of data only environmental variables + percent occurrence
-monthenv_vars <- RWocc[, c("Date", "SongYear", "Site", "sst", "bottom_temp", "sss", "stratification", "sstAnom",
-                           "phase", "device_type", "Month","period" , "daylight_hours",
-                          "cold_pool_index", "dist_200m_km", "percent_occurrence")]
+# subset of data only environmental variables + percent occurrence
+monthenv_vars <- RWocc[, c("Date", "SongYear", "Site", "sst", "bottom_temp", 
+                           "sss", "stratification", "sstAnom",
+                           "phase", "device_type", "Month", "period", "daylight_hours",
+                           "cold_pool_index", "dist_200m_km", "percent_occurrence")]
 
-ggpairs(monthenv_vars, 
-        title = "Monthly Pairwise Correlations",
-         #mapping = aes(color = Site, alpha = 0.7),
-        upper = list(continuous = wrap("cor", size = 4.5)),
-        #lower = list(continuous = wrap("points", alpha = 0.6, size = 0.5)),
-        lower = list(combo = wrap("facethist", binwidth = 0.5))) +
-  theme_minimal()
-
+# ggpairs(monthenv_vars, 
+#         title = "Monthly Pairwise Correlations",
+#         #mapping = aes(color = Site, alpha = 0.7),
+#         upper = list(continuous = wrap("cor", size = 4.5)),
+#         #lower = list(continuous = wrap("points", alpha = 0.6, size = 0.5)),
+#         lower = list(combo = wrap("facethist", binwidth = 0.5))) +
+#   theme_minimal()
 ```
 
 ```{r}
 # Boxplots of Occurrence by different categorical variables
 p1 <- ggplot(RWocc, aes(x = Site, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue") 
+  geom_boxplot(fill = "lightblue") +
+  ylab("Percent occurrence")
 p2 <- ggplot(RWocc, aes(x = as.factor(Month), y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
+  geom_boxplot(fill = "lightblue") +
+  labs(x = "Month", y = "Percent occurrence")
 p3 <- ggplot(RWocc, aes(x = period, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
+  geom_boxplot(fill = "lightblue") +
+  labs(x = "Period", y = "Percent occurrence")
 p4 <- ggplot(RWocc, aes(x = device_type, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
+  geom_boxplot(fill = "lightblue") +
+  labs(x = "Device type", y = "Percent occurrence")
 p5 <- ggplot(RWocc, aes(x = as.factor(dist_200m_km), y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
+  geom_boxplot(fill = "lightblue") +
+  labs(x = "Distance (km)", y = "Percent occurrence")
+
 # Combine with patchwork
-(p1 | p2) / (p3 | p4 | p5) +
+row1 <- (p1 + p2) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row2 <- (p3 + p4 + p5) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row1 / row2 + 
   plot_annotation(title = "Monthly occurrence by different categorical variables")
+```
 
 
+```{r}
 # Scatter plots for continuous variables
-c1 <- ggplot(RWocc, aes(y=percent_occurrence, x=sst)) + geom_point()
-c2 <-  ggplot(RWocc, aes(y=percent_occurrence, x=sss)) + geom_point()
-c3 <-  ggplot(RWocc, aes(y=percent_occurrence, x=stratification)) + geom_point()
-c4 <- ggplot(RWocc, aes(y=percent_occurrence, x=phase)) + geom_point()
-c5 <- ggplot(RWocc, aes(y=percent_occurrence, x=bottom_temp)) + geom_point()
-# Combine with patchwork
-(c1 | c2) / (c3 | c4 | c5) +
-  plot_annotation(title = "Monthly occurrence by different continuous variables")
+c1 <- ggplot(RWocc, aes(y = percent_occurrence, x = sst)) + geom_point() + 
+  labs(x = "Sea surface temperature (°C)", y = "Percent occurrence")
+c11 <- ggplot(RWocc, aes(y = percent_occurrence, x = sstAnom)) + geom_point() +
+  labs(x = "Sea surface temperature anomaly (°C)", y = "Percent occurrence")
+c2 <- ggplot(RWocc, aes(y = percent_occurrence, x = sss)) + geom_point() + 
+  labs(x = "Sea surface salinity", y = "Percent occurrence")
+c3 <- ggplot(RWocc, aes(y = percent_occurrence, x = stratification)) + geom_point() + 
+  labs(x = "Stratification", y = "Percent occurrence")
+c4 <- ggplot(RWocc, aes(y = percent_occurrence, x = phase)) + geom_point() + 
+  labs(x = "Percent moon illumination", y = "Percent occurrence")
+c5 <- ggplot(RWocc, aes(y = percent_occurrence, x = bottom_temp)) + geom_point() + 
+  labs(x = "Bottom temperature (°C)", y = "Percent occurrence")
 
+# Combine with patchwork
+row1 <- (c1 + c11 + c2) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row2 <- (c3 + c4 + c5) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row1 / row2 +
+  plot_annotation(title = "Monthly occurrence by different continuous variables")
  
- # Interaction plot
- with(RWocc,
-     interaction.plot(SongYear, device_type, percent_occurrence)
+# Interaction plot
+with(RWocc,
+     interaction.plot(SongYear, device_type, percent_occurrence, 
+                      las = 1)
 )
  
- with(RWocc,
-     interaction.plot(SongYear, as.factor(Month), percent_occurrence, col = as.factor(Month)))
-
-
+with(RWocc,
+     interaction.plot(SongYear, as.factor(Month), percent_occurrence, 
+                      las = 1, col = as.factor(Month))
+)
 ```
+
+Time series plots per site
+```{r}
+# Example time series plot for a specific site
+ggplot(RWocc, aes(x = Date, y = percent_occurrence, 
+                  group = Site)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Monthly percent occurrence over time by site",
+       x = "Date",
+       y = "Percent occurrence") +
+  theme_minimal() +
+  facet_wrap(~ Site, scales = "free_y")
+```
+
+Time series plots per site and year
+```{r}
+ggplot(RWocc, aes(x = Month, y = percent_occurrence, 
+                  color = SongYear,
+                  group = Site)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Monthly percent occurrence over time by site and year",
+       x = "Month",
+       y = "Percent occurrence") +
+  theme_minimal() +
+  facet_grid(SongYear ~ Site, scales = "free_y")
+```
+
+
 
 ## Model from NARWC 2025
 
@@ -175,7 +232,7 @@ m_RWocc0 <- gamlss(percent_occurrence / 100 ~
                   # ,sigma.formula = ~pb(Month) #+ pb(Year)
                   ,family = BEINF, #beta inflated
                   control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-                  data = RWocc)
+                  data = RWocc |> dplyr::select(-PercentOccurrence_l1, -PercentOccurrence_l2))
 summary(m_RWocc0)
 
 # year as categorical can test with anova likelihood ratio test, does make sense to use as categorical with missing 2018-2020 period rather than with smooth on continuous year.
@@ -209,21 +266,21 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 
 #### Variables tested against percent occurrence response variable:
 
--   **Month**, continuous with a cyclic cubic spline
+- **Month**, continuous with a cyclic cubic spline
 
--   **Song Year,** Nov 1 to Oct 31
+- **Song Year,** Nov 1 to Oct 31
 
--   **Sea surface temp anomalies** (sstAnom), continuous with p spline
+- **Sea surface temp anomalies** (sstAnom), continuous with p spline
 
--   **Stratification** (stratification), continuous with p spline
+- **Stratification** (stratification), continuous with p spline
 
--   **Sea surface salinity** (sss), continuous with p spline
+- **Sea surface salinity** (sss), continuous with p spline
 
--   **Percent moon illumination** (phase), continuous with p spline
+- **Percent moon illumination** (phase), continuous with p spline
 
--   **Device type** (device_type), categorical - archival or real time
+- **Device type** (device_type), categorical - archival or real time
 
--   **Site**, categorical
+- **Site**, categorical
 
 ## Monthly Percent Occurrence Model
 
@@ -242,7 +299,7 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                     #  pb(year) +
                        SongYear + 
                       device_type + 
-                      Site +
+                      Site +  
                       PercentOccurrence_l1 + #accounts for lag
                       PercentOccurrence_l2,
                    #   period
