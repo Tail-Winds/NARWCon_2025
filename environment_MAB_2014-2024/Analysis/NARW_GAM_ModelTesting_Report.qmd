@@ -63,9 +63,9 @@ RWocc <- RWocc0 %>%
      mutate(gap_days = as.numeric(Date - dplyr::lag(Date)),
             PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
             PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date),
-            # invalidate lags that would bridge a real within-period data gap (>32 days)
-            PercentOccurrence_l1 = if_else(!is.na(gap_days) & gap_days > 32, NA_real_, PercentOccurrence_l1),
-            PercentOccurrence_l2 = if_else(dplyr::lead(gap_days, 1) > 32 | gap_days > 32, NA_real_, PercentOccurrence_l2)) %>%
+            # invalidate lags that would bridge a real within-period data gap (>31 days)
+            PercentOccurrence_l1 = if_else(!is.na(gap_days) & gap_days > 31, NA_real_, PercentOccurrence_l1),
+            PercentOccurrence_l2 = if_else(dplyr::lag(gap_days, 1) > 31 | gap_days > 31, NA_real_, PercentOccurrence_l2)) %>%
      ungroup() %>%
     # Sort by Site and Date
     arrange(Site, Date) |> 
@@ -74,7 +74,6 @@ RWocc <- RWocc0 %>%
                                      "Present",
                                      "Absent") |> factor(levels = c("Absent", "Present"))
     )
-
 summary(RWocc)
 
 # Subset without non-missing data (due to lags), if needed for modeling
