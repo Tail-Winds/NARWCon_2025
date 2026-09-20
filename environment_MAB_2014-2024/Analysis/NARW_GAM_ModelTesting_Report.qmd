@@ -46,6 +46,8 @@ RWocc <- RWocc0 %>%
     mutate(Date = mdy(Date)) %>%
     mutate(Month = as.numeric(format(Date, "%m")),
            Year = year(Date)) %>%
+    # Make sure Date is the 1st of each month, to calculate date differences for lagged values
+    mutate(Date = as.Date(paste(Year, Month, "01", sep = "-"))) %>%
     # Add decimal year
     mutate(YearDec = Year + (Month - 0.5) / 12) %>%
     # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
@@ -64,8 +66,12 @@ RWocc <- RWocc0 %>%
             PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
             PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date),
             # invalidate lags that would bridge a real within-period data gap (>31 days)
-            PercentOccurrence_l1 = if_else(!is.na(gap_days) & gap_days > 31, NA_real_, PercentOccurrence_l1),
-            PercentOccurrence_l2 = if_else(dplyr::lag(gap_days, 1) > 31 | gap_days > 31, NA_real_, PercentOccurrence_l2)) %>%
+            PercentOccurrence_l1 = if_else(!is.na(gap_days) & gap_days > 31, 
+                                           NA_real_, 
+                                           PercentOccurrence_l1),
+            PercentOccurrence_l2 = if_else(dplyr::lag(gap_days, 1) > 31 | gap_days > 31, 
+                                           NA_real_, 
+                                           PercentOccurrence_l2)) %>%
      ungroup() %>%
     # Sort by Site and Date
     arrange(Site, Date) |> 
@@ -83,7 +89,12 @@ RWocc_noNA <- na.omit(RWocc)
 ```{r}
 # Sample sizes for different combinations
 table(RWocc$Year, RWocc$Site)
+table(RWocc$SongYear, RWocc$Site) # Song Year5 started early
+# RWocc |> 
+#   dplyr::filter(Site == "RTWB", SongYear == "Year5") |> 
+#   dplyr::select(Date, device_type, percent_occurrence)
 table(RWocc$device_type, RWocc$period)
+table(RWocc$period, RWocc$Year)
 ```
 
 
@@ -174,13 +185,15 @@ row1 <- (c1 + c11 + c2) + plot_layout(axes = "collect_y", axis_titles = "collect
 row2 <- (c3 + c4 + c5) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
 row1 / row2 +
   plot_annotation(title = "Monthly occurrence by different continuous variables")
- 
+```
+
+
+```{r}
 # Interaction plot
 with(RWocc,
      interaction.plot(SongYear, device_type, percent_occurrence, 
                       las = 1)
 )
- 
 with(RWocc,
      interaction.plot(SongYear, as.factor(Month), percent_occurrence, 
                       las = 1, col = as.factor(Month))
@@ -189,7 +202,6 @@ with(RWocc,
 
 Time series plots per site
 ```{r}
-# Example time series plot for a specific site
 ggplot(RWocc, aes(x = Date, y = percent_occurrence, 
                   group = Site)) +
   geom_line() +
@@ -201,14 +213,28 @@ ggplot(RWocc, aes(x = Date, y = percent_occurrence,
   facet_wrap(~ Site, scales = "free_y")
 ```
 
-Time series plots per site and year
+Time series plots per site and **calendar year** (note small samples in Year 2014 and 2024)
 ```{r}
 ggplot(RWocc, aes(x = Month, y = percent_occurrence, 
-                  color = SongYear,
                   group = Site)) +
   geom_line() +
   geom_point() +
-  labs(title = "Monthly percent occurrence over time by site and year",
+  scale_x_continuous(breaks = seq(3, 12, by = 3)) +
+  labs(title = "Monthly percent occurrence over time by site and calendar year",
+       x = "Month",
+       y = "Percent occurrence") +
+  theme_minimal() +
+  facet_grid(Year ~ Site, scales = "free_y")
+```
+
+
+Time series plots per site and **song year** (note small samples in Year4 and Year8; repeated months in Year5)
+```{r}
+ggplot(RWocc, aes(x = MonthFactor, y = percent_occurrence, 
+                  group = Site)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Monthly percent occurrence over time by site and song year",
        x = "Month",
        y = "Percent occurrence") +
   theme_minimal() +
@@ -250,7 +276,6 @@ wp(m_RWocc0)
 
 
 # Term plots of month and year
-
 par(mfrow = c(1, 2))
 
 # --- PANEL 1: Month (Custom Axis) ---
@@ -258,14 +283,11 @@ par(mfrow = c(1, 2))
 term.plot(m_RWocc0, terms = 1, xaxt = "n", xlab = "months")
 
 # Define and add your custom text labels
-month_labels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-axis(side = 1, at = 1:12, labels = month_labels)
+axis(side = 1, at = 1:12, labels = month.abb)
 
 # --- PANEL 2: Year (Default Axis) ---
 # We use terms = 2 to target the second smooth term (Year)
 term.plot(m_RWocc0, terms = 2, xlab = "Year")
-
 ```
 
 ## Models with Environmental Variables
