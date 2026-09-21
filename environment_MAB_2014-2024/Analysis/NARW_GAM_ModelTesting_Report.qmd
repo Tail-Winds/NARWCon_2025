@@ -406,7 +406,7 @@ Note on getting here:
 
 
 
-## Load Biweekly Data
+# Load Biweekly Data
 
 ```{r}
 # BI-WEEKLY
@@ -466,13 +466,12 @@ biwkenv_vars <- RWenv_biwkly[, c("Date", "Site", "sst", "bottom_temp","sss","str
                         "sstAnom", "phase", "device_type", "Month","period", "daylight_hours",
                            "cold_pool_index","percent_occurrence")]
 
-ggpairs(biwkenv_vars, 
-        title = "Biweekly Pairwise Correlations",
-         #mapping = aes(color = Site, alpha = 0.7),
-        upper = list(continuous = wrap("cor", size = 4.5)),
-       lower = list(combo = wrap("facethist", binwidth = 0.5))) +
-  theme_minimal()
-
+# ggpairs(biwkenv_vars, 
+#         title = "Biweekly Pairwise Correlations",
+#          #mapping = aes(color = Site, alpha = 0.7),
+#         upper = list(continuous = wrap("cor", size = 4.5)),
+#        lower = list(combo = wrap("facethist", binwidth = 0.5))) +
+#   theme_minimal()
 ```
 
 ```{r}
@@ -540,10 +539,10 @@ wp(m_RWoccbiwk, ylim.all=3)
 term.plot(m_RWoccbiwk, rug = TRUE)
 ```
 
-## Load Weekly Data
+# Load Weekly Data
 
 ```{r}
-#WEEKLY
+# WEEKLY
 #setwd("~/Documents/Documents - Caroline’s MacBook Pro/Whale_Analyses/NARWCon_2025/environment_MAB_2014-2024/master data")
 
 RWenv_wkly <- read.csv("RWEnv_weekly.csv")
@@ -553,121 +552,231 @@ RWenv_wkly <- RWenv_wkly %>%
   mutate(Month = as.numeric(format(Date, "%m")),
          Year = as.numeric(format(Date, "%Y"))) %>%
   # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
-  mutate(device_type = as.factor(device_type),
-         SongYear = as.factor(SongYear),
-         period = as.factor(period),
+  mutate(period = factor(period, levels = c("1", "2")),
          Site = as.factor(Site),
-        ) %>%
-     group_by(Site) %>%
-     mutate(PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
-            PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date)) %>%
-     ungroup() %>%
-  # Sort by Site and Date
-  arrange(Site, Date)
+         SongYear = factor(SongYear, levels = paste0("Year", 1:8)),
+         MonthFactor = factor(Month, levels = c(11, 12, 1:10)),
+         device_type = as.factor(device_type)) %>%
+  # Group by period so lags do not cross the large data gap between periods.
+  # Group by device_type because each device is a separate observation stream.
+  arrange(Site, period, device_type, Date) %>%
+  group_by(Site, period, device_type) %>%
+  mutate(gap_days = as.numeric(Date - dplyr::lag(Date)),
+         PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1),
+         PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2),
+         # Weekly data are Monday-anchored; invalidate lags across missing weeks.
+         PercentOccurrence_l1 = if_else(!is.na(gap_days) & gap_days > 7,
+                                        NA_real_,
+                                        PercentOccurrence_l1),
+         PercentOccurrence_l2 = if_else(dplyr::lag(gap_days, 1) > 7 | gap_days > 7,
+                                        NA_real_,
+                                        PercentOccurrence_l2)) %>%
+  ungroup() %>%
+  arrange(Site, Date) %>%
+  # Create the cold-pool index for weekly observations.
+  mutate(cold_pool_index = if_else(stratification >= 0.2 & bottom_temp <= 10,
+                                   "Present",
+                                   "Absent") |> factor(levels = c("Absent", "Present")))
 
+summary(RWenv_wkly)
 
+# Check weekly sampling gaps by observation stream.
+RWenv_wkly %>%
+  group_by(Site, period, device_type) %>%
+  summarise(n = n(),
+            max_gap_days = max(gap_days, na.rm = TRUE),
+            n_gaps_over_7_days = sum(gap_days > 7, na.rm = TRUE),
+            .groups = "drop")
 
-# order period
-RWenv_wkly$period <- factor(RWenv_wkly$period, levels = c("1","2"))
+# Keep the full data for exploration; create the model data explicitly below.
+weekly_model_data <- RWenv_wkly %>%
+  select(-any_of(c("gap_days" ))) %>% # "PercentOccurrence_l1", "PercentOccurrence_l2"
+  na.omit()
+```
 
-# Change year to categorical
-RWenv_wkly$SongYear <- factor(RWenv_wkly$SongYear, levels = c("Year1", "Year2", "Year3", "Year4", "Year5", "Year6", "Year7", "Year8"))
-
-
-# Create the index as a categorical factor on monthly level - may show little
-RWenv_wkly <- RWenv_wkly %>%
-  mutate(
-    cold_pool_index = if_else(
-      stratification >= 0.2 & bottom_temp <= 10,
-      "Present",
-      "Absent"
-    ),
-    # Convert to a factor
-    cold_pool_index = factor(cold_pool_index, levels = c("Absent", "Present")))
-
-RWenv_wkly <- na.omit(RWenv_wkly)
-
+```{r}
+# Sample sizes for different combinations
+table(RWenv_wkly$Year, RWenv_wkly$Site)
+table(RWenv_wkly$SongYear, RWenv_wkly$Site)
+table(RWenv_wkly$device_type, RWenv_wkly$period)
+table(RWenv_wkly$period, RWenv_wkly$Year)
 ```
 
 ## Exploring the data on the weekly scale
 
 ```{r}
-# WEEKLY 
-
-#subset of data only environmental variables + percent occurrence
-wkenv_vars <- RWenv_wkly[, c("Date", "Site", "sst", "bottom_temp", "sss","stratification",
-                            "phase", "device_type", "Month","period" , "daylight_hours",
-                           "cold_pool_index", "sstAnom", "percent_occurrence")]
-
-ggpairs(wkenv_vars, 
-        title = "Weekly Pairwise Correlations",
-         #mapping = aes(color = Site, alpha = 0.7),
-        upper = list(continuous = wrap("cor", size = 4.5)),
-        lower = list(combo = wrap("facethist", binwidth = 0.5)))  +
+# Histogram of response variable - weekly
+ggplot(RWenv_wkly, aes(x = percent_occurrence)) +
+  geom_histogram(binwidth = 10, boundary = 0, fill = "lightblue", color = "black") +
+  scale_x_continuous(limits = c(0, 100), breaks = seq(0, 100, 20)) +
+  scale_y_continuous(expand = expansion(mult = c(0.03, 0.05))) +
+  labs(title = "Histogram of Weekly Percent Occurrence",
+       x = "Percent occurrence",
+       y = "Frequency") +
   theme_minimal()
+```
 
+Count of zeros and proportion of zeros
+```{r}
+c(sum(RWenv_wkly$percent_occurrence == 0),
+  mean(RWenv_wkly$percent_occurrence == 0))
 ```
 
 ```{r}
-# Histogram of response variable
-hist(RWenv_wkly$percent_occurrence)
+# Subset of data only environmental variables and percent occurrence
+wkenv_vars <- RWenv_wkly[, c("Date", "SongYear", "Site", "sst", "bottom_temp",
+                             "sss", "stratification", "sstAnom", "phase",
+                             "device_type", "Month", "period", "daylight_hours",
+                             "cold_pool_index", "percent_occurrence")]
 
+# ggpairs(wkenv_vars,
+#         title = "Weekly Pairwise Correlations",
+#         upper = list(continuous = wrap("cor", size = 4.5)),
+#         lower = list(combo = wrap("facethist", binwidth = 0.5))) +
+#   theme_minimal()
 ```
 
 ```{r}
-# Boxplots of Occurrence by different categorical variables
+# Boxplots of occurrence by categorical variables
 p1 <- ggplot(RWenv_wkly, aes(x = Site, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue") 
-p2 <- ggplot(RWenv_wkly, aes(x = period, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
-p3 <- ggplot(RWenv_wkly, aes(x = device_type, y = percent_occurrence)) +
-  geom_boxplot(fill = "lightblue")
-# Combine with patchwork
-(p1 | p2 | p3) +
-  plot_annotation(title = "Weekly occurrence by different categorical variables")
+  geom_boxplot(fill = "lightblue") +
+  ylab("Percent occurrence")
+p2 <- ggplot(RWenv_wkly, aes(x = as.factor(Month), y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(x = "Month", y = "Percent occurrence")
+p3 <- ggplot(RWenv_wkly, aes(x = period, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(x = "Period", y = "Percent occurrence")
+p4 <- ggplot(RWenv_wkly, aes(x = device_type, y = percent_occurrence)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(x = "Device type", y = "Percent occurrence")
 
+row1 <- (p1 + p2) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row2 <- (p3 + p4) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row1 / row2 +
+  plot_annotation(title = "Weekly occurrence by different categorical variables")
+```
+
+```{r}
+# Scatter plots for continuous variables
+c1 <- ggplot(RWenv_wkly, aes(y = percent_occurrence, x = sst)) + geom_point() +
+  labs(x = "Sea surface temperature (°C)", y = "Percent occurrence")
+c11 <- ggplot(RWenv_wkly, aes(y = percent_occurrence, x = sstAnom)) + geom_point() +
+  labs(x = "Sea surface temperature anomaly (°C)", y = "Percent occurrence")
+c2 <- ggplot(RWenv_wkly, aes(y = percent_occurrence, x = sss)) + geom_point() +
+  labs(x = "Sea surface salinity", y = "Percent occurrence")
+c3 <- ggplot(RWenv_wkly, aes(y = percent_occurrence, x = stratification)) + geom_point() +
+  labs(x = "Stratification", y = "Percent occurrence")
+c4 <- ggplot(RWenv_wkly, aes(y = percent_occurrence, x = phase)) + geom_point() +
+  labs(x = "Percent moon illumination", y = "Percent occurrence")
+c5 <- ggplot(RWenv_wkly, aes(y = percent_occurrence, x = bottom_temp)) + geom_point() +
+  labs(x = "Bottom temperature (°C)", y = "Percent occurrence")
+
+row1 <- (c1 + c11 + c2) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row2 <- (c3 + c4 + c5) + plot_layout(axes = "collect_y", axis_titles = "collect_y")
+row1 / row2 +
+  plot_annotation(title = "Weekly occurrence by different continuous variables")
+```
+
+```{r}
+# Interaction plots
+with(RWenv_wkly,
+     interaction.plot(SongYear, device_type, percent_occurrence, las = 1))
+with(RWenv_wkly,
+     interaction.plot(SongYear, as.factor(Month), percent_occurrence,
+                      las = 1, col = as.factor(Month)))
+```
+
+
+```{r}
+# Time series plots per site
+ggplot(RWenv_wkly, aes(x = Date, y = percent_occurrence, group = Site)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Weekly percent occurrence over time by site",
+       x = "Date", y = "Percent occurrence") +
+  theme_minimal() +
+  facet_wrap(~ Site, scales = "free_y")
 ```
 
 ## Weekly Percent Occurrence Model
 
-Lagged biweekly variables 'PercentOccurrence_l1' for previous week and 'PercentOccurrence_l2' for subsequent week and corARMA correlation structure in model.
+The weekly model uses the same environmental predictors, smooth settings, and seasonal zero-probability model as the monthly environmental model.
 
 ```{r}
-# Modeling --- weekly - year as categorical
-
+# Weekly model using the monthly model structure
 set.seed(123)
 m_RWoccwk <- gamlss(percent_occurrence / 100 ~
-                    #  ga(~ti(year, Month)) +
-                      scs(Month, control = cs.control(cv = FALSE)) +
-                      # scs(sst, control = cs.control(cv = FALSE)) +
-                       pb(sstAnom) +
-                        pb(stratification) +
-                       pb(sss,max.df =9, inter=10) + 
-                       pb(phase,max.df =9, inter=10) +
-                      # ga(~s(Month, bs = "cp")) +
-                     # pb(Year) +
-                       SongYear +  # seems like year as continuous is better
-                      device_type +
-                      Site +
-                     cold_pool_index +
-                     PercentOccurrence_l1 + PercentOccurrence_l2,
-                  # + pvc(Month, by = Site)
-                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #beta inflated
-                  correlation = corARMA(p = 1),
-                  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-                  data = RWenv_wkly)
+                     scs(Month) + Site +
+                     pb(sst, max.df = 7, inter = 10) +
+                     pb(stratification, max.df = 7, inter = 10) +
+                     pb(sss, max.df = 7) +
+                     as.factor(Year) +
+                     pb(phase, max.df = 7, inter = 5) +
+                     device_type + 
+                    PercentOccurrence_l1,
+                   nu.formula = ~ pbc(Month, control = pbc.control(method = "GAIC")),
+                   family = BEINF,
+                   control = gamlss.control(c.crit = 0.01, n.cyc = 100, trace = FALSE),
+                   data = weekly_model_data)
+AIC(m_RWoccwk)
 summary(m_RWoccwk)
-
-# Select model based on AIC
-m_RWoccwk <- gamlss::stepGAIC(m_RWoccwk)
 ```
 
 ```{r}
 ## Model diagnostics ----
 plot(m_RWoccwk)
 plot(m_RWoccwk, ts = TRUE)
-wp(m_RWoccwk, ylim.all=3)
+wp(m_RWoccwk)
 
+par(mfrow = c(3, 3))
 term.plot(m_RWoccwk, rug = TRUE)
 ```
+
+Results for the weekly `nu` parameter (the probability of exact zero occurrence):
+```{r}
+term.plot(m_RWoccwk, parameter = "nu")
+```
+
+Test significance of the weekly seasonal `nu` term using a likelihood-ratio test:
+```{r}
+drop1(m_RWoccwk, parameter = "nu")
+```
+
+```{r}
+# Residual autocorrelation diagnostics by observation stream
+weekly_resid <- tibble(
+  res = resid(m_RWoccwk),
+  Date = weekly_model_data$Date,
+  Site = weekly_model_data$Site,
+  period = weekly_model_data$period,
+  device_type = weekly_model_data$device_type
+) %>%
+  arrange(Site, period, device_type, Date) %>%
+  group_by(Site, period, device_type) %>%
+  mutate(res_lag1 = dplyr::lag(res, 1),
+         res_lag2 = dplyr::lag(res, 2)) %>%
+  ungroup()
+
+# Stream-specific tests identify autocorrelation confined to particular series.
+weekly_resid %>%
+  group_by(Site, period, device_type) %>%
+  filter(sum(!is.na(res)) > 4) %>%
+  summarise(n = sum(!is.na(res)),
+            lag1_p = Box.test(res[!is.na(res)], lag = 1,
+                              type = "Ljung-Box")$p.value,
+            lag2_p = Box.test(res[!is.na(res)], lag = 2,
+                              type = "Ljung-Box")$p.value,
+            .groups = "drop")
+
+# Pooled tests use complete within-stream residual pairs and assess overall
+# autocorrelation across the weekly observation streams.
+weekly_resid %>%
+  summarise(
+    lag1_n = sum(complete.cases(res, res_lag1)),
+    lag1_p = cor.test(res, res_lag1, use = "complete.obs")$p.value,
+    lag2_n = sum(complete.cases(res, res_lag2)),
+    lag2_p = cor.test(res, res_lag2, use = "complete.obs")$p.value)
+```
+
+Note in the weekly model the lagged percent occurrence term `PercentOccurrence_l1` is included to account for autocorrelation in the response variable. The model diagnostics indicate that this term effectively addresses residual autocorrelation, as evidenced by the lack of significant autocorrelation in the site-specific and pooled tests.
