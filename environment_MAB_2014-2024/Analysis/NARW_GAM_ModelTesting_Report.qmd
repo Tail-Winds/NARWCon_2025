@@ -37,7 +37,6 @@ library(gamlss.add)
 library(mgcv)
 ```
 
-
 # Load Monthly Data
 
 ```{r}
@@ -81,10 +80,14 @@ RWocc <- RWocc0 %>%
                                      "Present",
                                      "Absent") |> factor(levels = c("Absent", "Present"))
     )
+# RWocc <- RWocc %>%
+#     filter(!SongYear %in% c("Year4", "Year5", "Year8"))
+
 summary(RWocc)
 
 # Subset without non-missing data (due to lags), if needed for modeling
 RWocc_noNA <- na.omit(RWocc)
+
 ```
 
 ```{r}
@@ -97,7 +100,6 @@ table(RWocc$SongYear, RWocc$Site) # Song Year5 started early
 table(RWocc$device_type, RWocc$period)
 table(RWocc$period, RWocc$Year)
 ```
-
 
 ## Exploring the data on the monthly scale
 
@@ -114,13 +116,13 @@ ggplot(RWocc, aes(x = percent_occurrence)) +
 ```
 
 Count of zeros and proportion of zeros
+
 ```{r}
 c(sum(RWocc$percent_occurrence == 0), 
   mean(RWocc$percent_occurrence == 0))
 ```
 
 Based on the histogram and the proportion of zeros, it appears that the monthly percent occurrence data is highly skewed with a significant number of zero values. This suggests that a zero inflated distribution might be appropriate.
-
 
 ```{r}
 # MONTHLY
@@ -165,7 +167,6 @@ row1 / row2 +
   plot_annotation(title = "Monthly occurrence by different categorical variables")
 ```
 
-
 ```{r}
 # Scatter plots for continuous variables
 c1 <- ggplot(RWocc, aes(y = percent_occurrence, x = sst)) + geom_point() + 
@@ -188,7 +189,6 @@ row1 / row2 +
   plot_annotation(title = "Monthly occurrence by different continuous variables")
 ```
 
-
 ```{r}
 # Interaction plot
 with(RWocc,
@@ -202,6 +202,7 @@ with(RWocc,
 ```
 
 Time series plots per site
+
 ```{r}
 ggplot(RWocc, aes(x = Date, y = percent_occurrence, 
                   group = Site)) +
@@ -215,6 +216,7 @@ ggplot(RWocc, aes(x = Date, y = percent_occurrence,
 ```
 
 Time series plots per site and **calendar year** (note small samples in Year 2014 and 2024)
+
 ```{r}
 ggplot(RWocc, aes(x = Month, y = percent_occurrence, 
                   group = Site)) +
@@ -228,8 +230,8 @@ ggplot(RWocc, aes(x = Month, y = percent_occurrence,
   facet_grid(Year ~ Site, scales = "free_y")
 ```
 
-
 Time series plots per site and **song year** (note small samples in Year4 and Year8; repeated months in Year5)
+
 ```{r}
 ggplot(RWocc, aes(x = MonthFactor, y = percent_occurrence, 
                   group = Site)) +
@@ -241,8 +243,6 @@ ggplot(RWocc, aes(x = MonthFactor, y = percent_occurrence,
   theme_minimal() +
   facet_grid(SongYear ~ Site, scales = "free_y")
 ```
-
-
 
 ## Model from NARWC 2025
 
@@ -297,21 +297,21 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 
 #### Variables tested against percent occurrence response variable:
 
-- **Month**, continuous with a cyclic cubic spline
+-   **Month**, continuous with a cyclic cubic spline
 
-- **Song Year,** Nov 1 to Oct 31
+-   **Song Year,** Nov 1 to Oct 31
 
-- **Sea surface temp anomalies** (sstAnom), continuous with p spline
+-   **Sea surface temp anomalies** (sstAnom), continuous with p spline
 
-- **Stratification** (stratification), continuous with p spline
+-   **Stratification** (stratification), continuous with p spline
 
-- **Sea surface salinity** (sss), continuous with p spline
+-   **Sea surface salinity** (sss), continuous with p spline
 
-- **Percent moon illumination** (phase), continuous with p spline
+-   **Percent moon illumination** (phase), continuous with p spline
 
-- **Device type** (device_type), categorical - archival or real time
+-   **Device type** (device_type), categorical - archival or real time
 
-- **Site**, categorical
+-   **Site**, categorical
 
 ## Monthly Percent Occurrence Model
 
@@ -326,8 +326,9 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                      pb(stratification, max.df = 7, inter = 10) +
                      pb(sss, max.df = 7) +
                      # pb(Year, max.df = 7) +
+                    # SongYear +
                      as.factor(Year) +
-                     pb(phase, max.df = 7) +
+                    # pb(phase, max.df = 7) +
                      device_type, # + 
                      # PercentOccurrence_l1, # + 
                      # PercentOccurrence_l2,
@@ -351,6 +352,7 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                    )
 AIC(m_RWocc1)
 summary(m_RWocc1)
+#m_RWocc1 <- gamlss::stepGAIC(m_RWocc1)
 
 ## Model diagnostics
 plot(m_RWocc1)
@@ -387,24 +389,24 @@ term.plot(m_RWocc1, rug = TRUE)
 ```
 
 Results for the nu parameter (P(exact zero)) are shown below. The seasonal nu term shows a strong summer peak in the probability of exact zero occurrence, which is consistent with the observed summer absence of whales.
+
 ```{r}
 term.plot(m_RWocc1, parameter = "nu")
 ```
 
 Test significance of the nu term by dropping the term and applying a likelihood ratio test (LRT).
+
 ```{r}
 drop1(m_RWocc1, parameter = "nu")
 ```
 
-Note on getting here: 
+Note on getting here:
 
-- `sstAnom` vs `sst` chosen empirically: swapping in `pb(sst)` for `pb(sstAnom)` (all else equal) gives higher AIC, so `sst` is kept; also, scatterplots above show a more evident relationship between `sst` vs percent occurrence than between percent occurrence and `sstAnom`.
-- Site-specific seasonality via `pvc(Month, by = Site)` can be used instead of `scs(Month) + Site`, but the latter was used based on lower AIC.
-- Most of the above choices now do not affect the absence of residual autocorrelation in the final model, even the lagged percent occurrence could be removed (and switched to the full dataset).
-- The seasonal nu term resolves the residual autocorrelation problem that persisted in earlier specification. Zero-occurrence months cluster strongly in summer, so nu (P(exact zero) in BEINF) is modeled seasonally too.
-- The function `stepGAIC` can further simplify the model for mu. It depends on whether such model is needed, or the goal is to show the effect of each environmental variable (significant or not).
-
-
+-   `sstAnom` vs `sst` chosen empirically: swapping in `pb(sst)` for `pb(sstAnom)` (all else equal) gives higher AIC, so `sst` is kept; also, scatterplots above show a more evident relationship between `sst` vs percent occurrence than between percent occurrence and `sstAnom`.
+-   Site-specific seasonality via `pvc(Month, by = Site)` can be used instead of `scs(Month) + Site`, but the latter was used based on lower AIC.
+-   Most of the above choices now do not affect the absence of residual autocorrelation in the final model, even the lagged percent occurrence could be removed (and switched to the full dataset).
+-   The seasonal nu term resolves the residual autocorrelation problem that persisted in earlier specification. Zero-occurrence months cluster strongly in summer, so nu (P(exact zero) in BEINF) is modeled seasonally too.
+-   The function `stepGAIC` can further simplify the model for mu. It depends on whether such model is needed, or the goal is to show the effect of each environmental variable (significant or not).
 
 # Load Biweekly Data
 
@@ -419,41 +421,50 @@ RWenv_biwkly <- RWenv_biwkly %>%
   mutate(Month = as.numeric(format(Date, "%m")),
          Year = as.numeric(format(Date, "%Y"))) %>%
   # Change Site, Month, and Period (1 = 2014-17, 2 = 2021-2024) to categorical
-  mutate(device_type = as.factor(device_type),
-         SongYear = as.factor(SongYear),
-         period = as.factor(period),
+  mutate(period = factor(period, levels = c("1", "2")),
          Site = as.factor(Site),
-  ) %>%
-     group_by(Site) %>%
-     mutate(PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1, order_by = Date),
-            PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2, order_by = Date)) %>%
-     ungroup() %>%
-    # Sort by Site and Date
-    arrange(Site, Date)
+         SongYear = factor(SongYear, levels = paste0("Year", 1:8)),
+         MonthFactor = factor(Month, levels = c(11, 12, 1:10)),
+         device_type = as.factor(device_type)) %>%
+  # Group by period so lags do not cross the large data gap between periods.
+  # Group by device_type because each device is a separate observation stream.
+  arrange(Site, period, device_type, Date) %>%
+  group_by(Site, period, device_type) %>%
+  mutate(gap_days = as.numeric(Date - dplyr::lag(Date)),
+         PercentOccurrence_l1 = dplyr::lag(percent_occurrence, 1),
+         PercentOccurrence_l2 = dplyr::lag(percent_occurrence, 2),
+         # Biweekly data are Monday-anchored; invalidate lags across missing weeks.
+         PercentOccurrence_l1 = if_else(!is.na(gap_days) & gap_days > 14,
+                                        NA_real_,
+                                        PercentOccurrence_l1),
+         PercentOccurrence_l2 = if_else(dplyr::lag(gap_days, 1) > 14 | gap_days > 14,
+                                        NA_real_,
+                                        PercentOccurrence_l2)) %>%
+  ungroup() %>%
+  arrange(Site, Date) %>%
+  # Create the cold-pool index for weekly observations.
+  mutate(cold_pool_index = if_else(stratification >= 0.2 & bottom_temp <= 10,
+                                   "Present",
+                                   "Absent") |> factor(levels = c("Absent", "Present")))
 
+summary(RWenv_biwkly)
 
-# order period
-RWenv_biwkly$period <- factor(RWenv_biwkly$period, levels = c("1","2"))
+# Check weekly sampling gaps by observation stream.
+RWenv_biwkly %>%
+  group_by(Site, period, device_type) %>%
+  summarise(n = n(),
+            max_gap_days = max(gap_days, na.rm = TRUE),
+            n_gaps_over_14_days = sum(gap_days > 14, na.rm = TRUE),
+            .groups = "drop")
 
-RWenv_biwkly$SongYear <- factor(RWenv_biwkly$SongYear, levels = c("Year1", "Year2", "Year3", "Year4", "Year5", "Year6", "Year7", "Year8"))
+# Keep the full data for exploration; create the model data explicitly below.
+biweekly_model_data <- RWenv_biwkly %>%
+  select(-any_of(c("gap_days" ))) %>% # "PercentOccurrence_l1", "PercentOccurrence_l2"
+  na.omit()
 
-
-# Create the index as a categorical factor on monthly level - may show little
-RWenv_biwkly <- RWenv_biwkly %>%
-  mutate(
-    cold_pool_index = if_else(
-      stratification >= 0.2 & bottom_temp <= 10,
-      "Present",
-      "Absent"
-    ),
-    # Convert to a factor
-    cold_pool_index = factor(cold_pool_index, levels = c("Absent", "Present"))
-  )
-
-RWenv_biwkly <- na.omit(RWenv_biwkly)
-
-RWenv_biwkly$PercentOccurrence_l1 <- as.numeric(RWenv_biwkly$PercentOccurrence_l1)
-RWenv_biwkly$PercentOccurrence_l2 <- as.numeric(RWenv_biwkly$PercentOccurrence_l2)
+# Remove segemented song years
+biweekly_model_data2 <- biweekly_model_data %>%
+    filter(!SongYear %in% c("Year4", "Year5", "Year8"))
 ```
 
 ## Exploring the data on the biweekly scale
@@ -499,44 +510,85 @@ p4 <- ggplot(RWenv_biwkly, aes(x = SongYear, y = percent_occurrence)) +
 
 ## Biweekly Percent Occurrence Model
 
-Introduction of lagged biweekly variables 'PercentOccurrence_l1' for previous 2-week period and 'PercentOccurrence_l2' for subsequent 2-week period and corARMA correlation structure in model.
-
 ```{r}
-# Modeling ---- biweekly - year as categorical
-
+# Modeling ---- 
+# Biweekly model using the monthly model structure
 set.seed(123)
 m_RWoccbiwk <- gamlss(percent_occurrence / 100 ~
-                    #  ga(~ti(year, Month)) +
-                      scs(Month, control = cs.control(cv = FALSE)) +
-                    #   scs(sst, control = cs.control(cv = FALSE)) +
-                       pb(sstAnom) +
-                        pb(stratification) +
-                       pb(sss,max.df =9) +
-                       pb(phase, max.df =8, control = pb.control(inter = 5)) +
-                      # ga(~s(Month, bs = "cp")) +
-                     # pb(Year) +
-                       SongYear +  
-                      device_type + 
-                    cold_pool_index +
-                      Site +
-                     PercentOccurrence_l1 + PercentOccurrence_l2,
-                  # + pvc(Month, by = Site)
-                  # ,sigma.formula = ~pb(Month) #+ pb(Year)
-                  ,family = BEINF, #beta inflated
-                 correlation = corARMA(p = 1),
-                  control = gamlss.control(c.crit = 0.01, n.cyc = 100),
-                  data = RWenv_biwkly)
+                     scs(Month) + Site +
+                     pb(sst, max.df = 7, inter = 10) +
+                     pb(stratification, max.df = 7, inter = 10) +
+                     pb(sss, max.df = 7) +
+                    # SongYear +
+                     as.factor(Year) +
+                     pb(phase, max.df = 7, inter = 5) +
+                     device_type + 
+                    PercentOccurrence_l1 +
+                    PercentOccurrence_l2,
+                   nu.formula = ~ pbc(Month, control = pbc.control(method = "GAIC")),
+                   family = BEINF,
+                   control = gamlss.control(c.crit = 0.01, n.cyc = 100, trace = FALSE),
+                   data = biweekly_model_data)
+AIC(m_RWoccbiwk)
 summary(m_RWoccbiwk)
+#m_RWoccbiwk <- gamlss::stepGAIC(m_RWoccbiwk)
 
-# Select model based on AIC
-m_RWoccbiwk <- gamlss::stepGAIC(m_RWoccbiwk)
-
-## Model diagnostics ----
+## Model diagnostics
 plot(m_RWoccbiwk)
 plot(m_RWoccbiwk, ts = TRUE)
-wp(m_RWoccbiwk, ylim.all=3)
+wp(m_RWoccbiwk)
 
+# Model inference
+par(mfrow = c(3, 3))
 term.plot(m_RWoccbiwk, rug = TRUE)
+```
+
+Results for the biweekly `nu` parameter (the probability of exact zero occurrence):
+
+```{r}
+term.plot(m_RWoccbiwk, parameter = "nu")
+```
+
+Test significance of the biweekly seasonal `nu` term using a likelihood-ratio test:
+
+```{r}
+drop1(m_RWoccbiwk, parameter = "nu")
+```
+
+```{r}
+# Residual autocorrelation diagnostics by observation stream
+biweekly_resid <- tibble(
+  res = resid(m_RWoccbiwk),
+  Date = biweekly_model_data$Date,
+  Site = biweekly_model_data$Site,
+  period = biweekly_model_data$period,
+  device_type = biweekly_model_data$device_type
+) %>%
+  arrange(Site, period, device_type, Date) %>%
+  group_by(Site, period, device_type) %>%
+  mutate(res_lag1 = dplyr::lag(res, 1),
+         res_lag2 = dplyr::lag(res, 2)) %>%
+  ungroup()
+
+# Stream-specific tests identify autocorrelation confined to particular series.
+biweekly_resid %>%
+  group_by(Site, period, device_type) %>%
+  filter(sum(!is.na(res)) > 4) %>%
+  summarise(n = sum(!is.na(res)),
+            lag1_p = Box.test(res[!is.na(res)], lag = 1,
+                              type = "Ljung-Box")$p.value,
+            lag2_p = Box.test(res[!is.na(res)], lag = 2,
+                              type = "Ljung-Box")$p.value,
+            .groups = "drop")
+
+# Pooled tests use complete within-stream residual pairs and assess overall
+# autocorrelation across the weekly observation streams.
+biweekly_resid %>%
+  summarise(
+    lag1_n = sum(complete.cases(res, res_lag1)),
+    lag1_p = cor.test(res, res_lag1, use = "complete.obs")$p.value,
+    lag2_n = sum(complete.cases(res, res_lag2)),
+    lag2_p = cor.test(res, res_lag2, use = "complete.obs")$p.value)
 ```
 
 # Load Weekly Data
@@ -592,6 +644,10 @@ RWenv_wkly %>%
 weekly_model_data <- RWenv_wkly %>%
   select(-any_of(c("gap_days" ))) %>% # "PercentOccurrence_l1", "PercentOccurrence_l2"
   na.omit()
+
+weekly_model_data2 <- weekly_model_data %>%
+    filter(!SongYear %in% c("Year4", "Year5", "Year8"))
+    
 ```
 
 ```{r}
@@ -617,6 +673,7 @@ ggplot(RWenv_wkly, aes(x = percent_occurrence)) +
 ```
 
 Count of zeros and proportion of zeros
+
 ```{r}
 c(sum(RWenv_wkly$percent_occurrence == 0),
   mean(RWenv_wkly$percent_occurrence == 0))
@@ -687,7 +744,6 @@ with(RWenv_wkly,
                       las = 1, col = as.factor(Month)))
 ```
 
-
 ```{r}
 # Time series plots per site
 ggplot(RWenv_wkly, aes(x = Date, y = percent_occurrence, group = Site)) +
@@ -712,6 +768,7 @@ m_RWoccwk <- gamlss(percent_occurrence / 100 ~
                      pb(stratification, max.df = 7, inter = 10) +
                      pb(sss, max.df = 7) +
                      as.factor(Year) +
+                   #  SongYear +
                      pb(phase, max.df = 7, inter = 5) +
                      device_type + 
                     PercentOccurrence_l1,
@@ -721,6 +778,9 @@ m_RWoccwk <- gamlss(percent_occurrence / 100 ~
                    data = weekly_model_data)
 AIC(m_RWoccwk)
 summary(m_RWoccwk)
+
+#m_RWoccwk <- gamlss::stepGAIC(m_RWoccwk)
+
 ```
 
 ```{r}
@@ -734,11 +794,13 @@ term.plot(m_RWoccwk, rug = TRUE)
 ```
 
 Results for the weekly `nu` parameter (the probability of exact zero occurrence):
+
 ```{r}
 term.plot(m_RWoccwk, parameter = "nu")
 ```
 
 Test significance of the weekly seasonal `nu` term using a likelihood-ratio test:
+
 ```{r}
 drop1(m_RWoccwk, parameter = "nu")
 ```
