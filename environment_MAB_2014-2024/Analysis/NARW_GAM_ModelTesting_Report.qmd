@@ -80,6 +80,7 @@ RWocc <- RWocc0 %>%
                                      "Present",
                                      "Absent") |> factor(levels = c("Absent", "Present"))
     )
+
 # RWocc <- RWocc %>%
 #     filter(!SongYear %in% c("Year4", "Year5", "Year8"))
 
@@ -301,10 +302,6 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 
 -   **Song Year,** Nov 1 to Oct 31
 
--   **Sea surface temp anomalies** (sstAnom), continuous with p spline
-
--   **Stratification** (stratification), continuous with p spline
-
 -   **Sea surface salinity** (sss), continuous with p spline
 
 -   **Percent moon illumination** (phase), continuous with p spline
@@ -312,6 +309,20 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 -   **Device type** (device_type), categorical - archival or real time
 
 -   **Site**, categorical
+
+-   Cold pool presence/absence (cold_pool_index), categorical
+
+**Temperature Related Variables**
+
+Certain variables are being tested separately in model due to high correlations between sst and stratification (0.774) and sst and bottom_temp (0.736)
+
+-   **Sea surface temp anomalies** (sstAnom), continuous with p spline
+
+-   **Sea surface temp** (sst), continuous with p spline
+
+-   **Bottom temp** (bottom_temp), continuous with p spline
+
+-   **Stratification** (stratification), continuous with p spline
 
 ## Monthly Percent Occurrence Model
 
@@ -630,6 +641,10 @@ RWenv_wkly <- RWenv_wkly %>%
                                    "Present",
                                    "Absent") |> factor(levels = c("Absent", "Present")))
 
+# Change year to categorical
+RWenv_wkly$Year <- as.factor(RWenv_wkly$Year)
+RWenv_wkly$Year <- relevel(RWenv_wkly$Year, "2015") #relevel for intercept to be 2015 not 2014
+
 summary(RWenv_wkly)
 
 # Check weekly sampling gaps by observation stream.
@@ -686,11 +701,11 @@ wkenv_vars <- RWenv_wkly[, c("Date", "SongYear", "Site", "sst", "bottom_temp",
                              "device_type", "Month", "period", "daylight_hours",
                              "cold_pool_index", "percent_occurrence")]
 
-# ggpairs(wkenv_vars,
-#         title = "Weekly Pairwise Correlations",
-#         upper = list(continuous = wrap("cor", size = 4.5)),
-#         lower = list(combo = wrap("facethist", binwidth = 0.5))) +
-#   theme_minimal()
+ ggpairs(wkenv_vars,
+         title = "Weekly Pairwise Correlations",
+         upper = list(continuous = wrap("cor", size = 4.5)),
+         lower = list(combo = wrap("facethist", binwidth = 0.5))) +
+   theme_minimal()
 ```
 
 ```{r}
@@ -760,24 +775,71 @@ ggplot(RWenv_wkly, aes(x = Date, y = percent_occurrence, group = Site)) +
 The weekly model uses the same environmental predictors, smooth settings, and seasonal zero-probability model as the monthly environmental model.
 
 ```{r}
-# Weekly model using the monthly model structure
+# Weekly model using the monthly model structure - with sst
 set.seed(123)
-m_RWoccwk <- gamlss(percent_occurrence / 100 ~
+m_RWoccwk_sst <- gamlss(percent_occurrence / 100 ~
+                    # pvc(Month, by = Site) +
                      scs(Month) + Site +
                      pb(sst, max.df = 7, inter = 10) +
+                    # pb(bottom_temp, max.df = 7, inter = 10) +
+                    # pb(stratification, max.df = 7, inter = 10) +
+                     pb(sss, max.df = 7) +
+                     as.factor(Year) +
+                   #  SongYear +
+                     pb(phase, max.df = 7, inter = 5) +
+                     device_type + 
+                    PercentOccurrence_l1 +
+                    cold_pool_index,
+                   nu.formula = ~ pbc(Month, control = pbc.control(method = "GAIC")),
+                   family = BEINF,
+                   control = gamlss.control(c.crit = 0.01, n.cyc = 100, trace = FALSE),
+                   data = weekly_model_data)
+AIC(m_RWoccwk_sst)
+summary(m_RWoccwk_sst)
+
+# Weekly model using the monthly model structure - with stratification
+set.seed(123)
+m_RWoccwk_strat <- gamlss(percent_occurrence / 100 ~
+                   #  pvc(Month, by = Site) +
+                     scs(Month) + Site +
+                   #  pb(sst, max.df = 7, inter = 10) +
+                   #  pb(bottom_temp, max.df = 7, inter = 10) +
                      pb(stratification, max.df = 7, inter = 10) +
                      pb(sss, max.df = 7) +
                      as.factor(Year) +
                    #  SongYear +
                      pb(phase, max.df = 7, inter = 5) +
                      device_type + 
-                    PercentOccurrence_l1,
+                    PercentOccurrence_l1 +
+                     cold_pool_index,
                    nu.formula = ~ pbc(Month, control = pbc.control(method = "GAIC")),
                    family = BEINF,
                    control = gamlss.control(c.crit = 0.01, n.cyc = 100, trace = FALSE),
                    data = weekly_model_data)
-AIC(m_RWoccwk)
-summary(m_RWoccwk)
+AIC(m_RWoccwk_strat)
+summary(m_RWoccwk_strat)
+
+# Weekly model using the monthly model structure - with stratification and bottom temp
+set.seed(123)
+m_RWoccwk_bt <- gamlss(percent_occurrence / 100 ~
+                   #  pvc(Month, by = Site) +
+                     scs(Month) + Site +
+                  #   pb(sst, max.df = 7, inter = 10) +
+                     pb(bottom_temp, max.df = 7, inter = 10) +
+                     pb(stratification, max.df = 7, inter = 10) +
+                     pb(sss, max.df = 7) +
+                     as.factor(Year) +
+                   #  SongYear +
+                     pb(phase, max.df = 7, inter = 5) +
+                     device_type + 
+                    PercentOccurrence_l1 +
+                      cold_pool_index,
+                   nu.formula = ~ pbc(Month, control = pbc.control(method = "GAIC")),
+                   family = BEINF,
+                   control = gamlss.control(c.crit = 0.01, n.cyc = 100, trace = FALSE),
+                   data = weekly_model_data)
+AIC(m_RWoccwk_bt)
+summary(m_RWoccwk_bt)
 
 #m_RWoccwk <- gamlss::stepGAIC(m_RWoccwk)
 
@@ -785,30 +847,116 @@ summary(m_RWoccwk)
 
 ```{r}
 ## Model diagnostics ----
-plot(m_RWoccwk)
-plot(m_RWoccwk, ts = TRUE)
-wp(m_RWoccwk)
+plot(m_RWoccwk_sst)
+plot(m_RWoccwk_sst, ts = TRUE)
+wp(m_RWoccwk_sst)
 
 par(mfrow = c(3, 3))
-term.plot(m_RWoccwk, rug = TRUE)
+term.plot(m_RWoccwk_sst, rug = TRUE)
+
+
+plot(m_RWoccwk_strat)
+plot(m_RWoccwk_strat, ts = TRUE)
+wp(m_RWoccwk_strat)
+
+par(mfrow = c(3, 3))
+term.plot(m_RWoccwk_strat, rug = TRUE)
+
+
+plot(m_RWoccwk_bt)
+plot(m_RWoccwk_bt, ts = TRUE)
+wp(m_RWoccwk_bt)
+
+par(mfrow = c(3, 3))
+term.plot(m_RWoccwk_bt, rug = TRUE)
 ```
 
 Results for the weekly `nu` parameter (the probability of exact zero occurrence):
 
 ```{r}
-term.plot(m_RWoccwk, parameter = "nu")
+term.plot(m_RWoccwk_sst, parameter = "nu")
+
+term.plot(m_RWoccwk_strat, parameter = "nu")
+
+term.plot(m_RWoccwk_bt, parameter = "nu")
+```
+
+```{r}
+par(mfrow = c(3, 4))
+term.plot(m_RWoccwk_bt, rug = TRUE) 
+
+term.plot(m_RWoccwk_bt, parameter = "nu")
+
+```
+
+```{r}
+# 1. Set pure white background and multi-panel layout
+par(mfrow = c(3, 4), bg = "white")
+
+# 2. Main term plot (location parameter 'mu')
+term.plot(
+  m_RWoccwk_bt, 
+  rug = TRUE,
+  scheme = "shaded",       # Enables filled confidence intervals
+  col.term = "#08306b",     # Dark blue main trend lines/bars
+  col.shaded = "#9ecae1",   # Light blue confidence interval fill
+  col.se = "#08519c",       # Medium-dark blue SE lines
+  col.rug = "#08306a"       # Dark blue rug marks
+)
+
+# 3. Term plot for parameter 'nu'
+term.plot(
+  m_RWoccwk_bt, 
+  parameter = "nu", 
+  rug = TRUE,
+  scheme = "shaded",
+  col.term = "#08306b", 
+  col.shaded = "#9ecae1", 
+  col.se = "#08519c", 
+  col.rug = "#08306a"
+)
+```
+
+```{r}
+# 1. Set pure white background and multi-panel layout
+par(mfrow = c(3, 4), bg = "white")
+
+# 2. Main term plot (location parameter 'mu')
+term.plot(
+  m_RWoccwk_bt, 
+  #rug = TRUE,
+  scheme = "shaded",       # Enables filled confidence intervals
+  col.term = "#08306b",     # Dark blue main trend lines/bars
+  col.shaded = "#9ecae1",   # Light blue confidence interval fill
+  col.se = "#08519c",       # Medium-dark blue SE lines
+  #col.rug = "#08306a"       # Dark blue rug marks
+)
+
+# 3. Term plot for parameter 'nu'
+term.plot(
+  m_RWoccwk_bt, 
+  parameter = "nu", 
+  #rug = TRUE,
+  scheme = "shaded",
+  col.term = "#08306b", 
+  col.shaded = "#9ecae1", 
+  col.se = "#08519c", 
+  #col.rug = "#08306a"
+)
 ```
 
 Test significance of the weekly seasonal `nu` term using a likelihood-ratio test:
 
 ```{r}
-drop1(m_RWoccwk, parameter = "nu")
+drop1(m_RWoccwk_sst, parameter = "nu")
+drop1(m_RWoccwk_strat, parameter = "nu")
+drop1(m_RWoccwk_bt, parameter = "nu")
 ```
 
 ```{r}
 # Residual autocorrelation diagnostics by observation stream
 weekly_resid <- tibble(
-  res = resid(m_RWoccwk),
+  res = resid(m_RWoccwk_bt),
   Date = weekly_model_data$Date,
   Site = weekly_model_data$Site,
   period = weekly_model_data$period,
