@@ -95,11 +95,23 @@ ggplot(D_rtwb, aes(x = Date, y = PercentOccurrence)) +
 
 dev.off()
 
+#To show A7M and RTWB as Archival vs Real Time plot - across years
+
+# Assuming your data frame is named 'D'
+
+ggplot(D_all, aes(x = Month, y = PercentOccurrence, fill = factor(Site))) +
+    geom_col(position = "stack") +
+    labs(
+        x = "Month",
+        y = "Percent Monthly Occurrence",
+        fill = "Site"
+    ) +
+    theme_minimal()
 
 
 #To show A7M and RTWB as Archival vs Real Time plot
 
-jpeg("PercentOcc_2014_2024_070926.jpeg", width = 1900, height = 1000, res = 250)
+jpeg("PercentOcc_2014_2024_101326.jpeg", width = 1950, height = 1000, res = 250)
 
 
 # Assuming your data frame is named 'D'
@@ -127,7 +139,7 @@ ggplot(D, aes(x = Date, y = PercentOccurrence)) +
     # The rest of your code remains the same
     scale_x_date(
         date_labels = "%B %Y",
-        date_breaks = "6 month"
+        date_breaks = "3 month"
     ) +
     scale_color_manual(
         # The color values define the colors for the legends and lines
@@ -150,7 +162,7 @@ dev.off()
 
 #To make figure showing all sites percent occcurrence not just A-7M and RTWB
 
-jpeg("PercentOcc_2014_2024_All Sites.jpeg", width = 1900, height = 1000, res = 250)
+jpeg("PercentOcc_2014_2024_All Sites_101326.jpeg", width = 1900, height = 1000, res = 250)
 
 
 # Assuming your data frame is named 'D'
@@ -192,11 +204,11 @@ ggplot(D_all, aes(x = Date, y = PercentOccurrence)) +
     # The rest of your code remains the same
     scale_x_date(
         date_labels = "%B %Y",
-        date_breaks = "6 month"
+        date_breaks = "3 month"
     ) +
     scale_color_manual(
         # The color values define the colors for the legends and lines
-        values = c("RTWB" = "#377eb8", "A7M" = "#ff7f00","A2M" = "#ff7f89", "T2M" = "#ff7f80"),
+        values = c("RTWB" = "#377eb8", "A7M" = "#ff7f00","A2M" = "#ff7f50", "T2M" = "#ff7f60"),
         breaks = c("RTWB", "A7M", "A2M", "T2M")
     ) +
     # NOTE: You don't need scale_linetype_manual if both are "solid"
