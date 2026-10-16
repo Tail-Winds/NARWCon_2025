@@ -216,6 +216,21 @@ ggplot(RWocc, aes(x = Date, y = percent_occurrence,
   facet_wrap(~ Site, scales = "free_y")
 ```
 
+Time series plots per site and **calendar year** with salinity (note small samples in Year 2014 and 2024)
+
+```{r}
+ggplot(RWocc, aes(x = Month, y = sss, 
+                  group = Site)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(3, 12, by = 3)) +
+  labs(title = "Monthly percent occurrence over time by site and calendar year",
+       x = "Month",
+       y = "Percent occurrence") +
+  theme_minimal() +
+  facet_grid(Year ~ Site, scales = "free_y")
+```
+
 Time series plots per site and **calendar year** (note small samples in Year 2014 and 2024)
 
 ```{r}
@@ -768,6 +783,21 @@ ggplot(RWenv_wkly, aes(x = Date, y = percent_occurrence, group = Site)) +
        x = "Date", y = "Percent occurrence") +
   theme_minimal() +
   facet_wrap(~ Site, scales = "free_y")
+```
+
+Time series plots per site and **calendar year** with salinity (note small samples in Year 2014 and 2024)
+
+```{r}
+ggplot(RWenv_wkly, aes(x = Month, y = sss, 
+                  group = Site)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(3, 12, by = 2)) +
+  labs(title = "Monthly Sea surface salinity over time by site and calendar year",
+       x = "Month",
+       y = "Sea surface salinity") +
+  theme_minimal() +
+  facet_grid(Year ~ Site, scales = "free_y")
 ```
 
 ## Weekly Percent Occurrence Model
