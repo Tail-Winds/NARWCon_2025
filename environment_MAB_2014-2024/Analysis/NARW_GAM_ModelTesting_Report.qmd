@@ -785,17 +785,63 @@ ggplot(RWenv_wkly, aes(x = Date, y = percent_occurrence, group = Site)) +
   facet_wrap(~ Site, scales = "free_y")
 ```
 
-Time series plots per site and **calendar year** with salinity (note small samples in Year 2014 and 2024)
+Time series plots per site and **calendar year** (note small samples in Year 2014 and 2024)
 
 ```{r}
-ggplot(RWenv_wkly, aes(x = Month, y = sss, 
-                  group = Site)) +
+year_colors <- c(
+    # Period 1 (2014–2017): Warm Oranges (Light -> Dark)
+    "2014" = "#FDD0A2",  # Light Peach/Orange
+    "2015" = "#FDAE6B",  # Medium Orange
+    "2016" = "#E6550D",  # Dark Orange
+    "2017" = "#A63603",   # Deep Rust/Brown-Orange
+
+    # Period 2 (2021–2024): Cool Blues (Light -> Dark)
+    "2021" = "#C6DBEF",  # Very Light Blue
+    "2022" = "#9ECAE1",  # Light Blue
+    "2023" = "#4292C6",  # Medium Blue
+    "2024" = "#08519C"  # Dark Navy
+)
+
+ggplot(RWocc, aes(x = Month, y = percent_occurrence, 
+                  group = Site, color = as.factor(Year))) +
   geom_line() +
   geom_point() +
   scale_x_continuous(breaks = seq(3, 12, by = 2)) +
-  labs(title = "Monthly Sea surface salinity over time by site and calendar year",
+  labs(title = "Monthly percent occurrence over time by site and calendar year",
+       x = "Month",
+       y = "Percent occurrence") +
+    scale_color_manual(values = year_colors) +
+  theme_minimal() +
+  facet_grid(Year ~ Site, scales = "free_y")
+```
+
+Time series plots per site and **calendar year** with salinity (note small samples in Year 2014 and 2024)
+
+```{r}
+year_colors <- c(
+    # Period 1 (2014–2017): Warm Oranges (Light -> Dark)
+    "2014" = "#FDD0A2",  # Light Peach/Orange
+    "2015" = "#FDAE6B",  # Medium Orange
+    "2016" = "#E6550D",  # Dark Orange
+    "2017" = "#A63603",   # Deep Rust/Brown-Orange
+
+    # Period 2 (2021–2024): Cool Blues (Light -> Dark)
+    "2021" = "#C6DBEF",  # Very Light Blue
+    "2022" = "#9ECAE1",  # Light Blue
+    "2023" = "#4292C6",  # Medium Blue
+    "2024" = "#08519C"  # Dark Navy
+)
+
+
+ggplot(RWocc, aes(x = Month, y = sss, 
+                  group = Site, color = as.factor(Year))) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = seq(3, 12, by = 2)) +
+  labs(title = "Monthly sea surface salinity over time by site and calendar year",
        x = "Month",
        y = "Sea surface salinity") +
+    scale_color_manual(values = year_colors) +
   theme_minimal() +
   facet_grid(Year ~ Site, scales = "free_y")
 ```
