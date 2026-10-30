@@ -14,6 +14,8 @@ knitr:
         message: false
         warning: false
         comment: "#>"
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Packages
@@ -297,21 +299,21 @@ term.plot(m_RWocc0, terms = 2, xlab = "Year")
 
 #### Variables tested against percent occurrence response variable:
 
--   **Month**, continuous with a cyclic cubic spline
+- **Month**, continuous with a cyclic cubic spline
 
--   **Song Year,** Nov 1 to Oct 31
+- **Song Year,** Nov 1 to Oct 31
 
--   **Sea surface temp anomalies** (sstAnom), continuous with p spline
+- **Sea surface temp anomalies** (sstAnom), continuous with p spline
 
--   **Stratification** (stratification), continuous with p spline
+- **Stratification** (stratification), continuous with p spline
 
--   **Sea surface salinity** (sss), continuous with p spline
+- **Sea surface salinity** (sss), continuous with p spline
 
--   **Percent moon illumination** (phase), continuous with p spline
+- **Percent moon illumination** (phase), continuous with p spline
 
--   **Device type** (device_type), categorical - archival or real time
+- **Device type** (device_type), categorical - archival or real time
 
--   **Site**, categorical
+- **Site**, categorical
 
 ## Monthly Percent Occurrence Model
 
@@ -342,7 +344,8 @@ m_RWocc1 <- gamlss(percent_occurrence / 100 ~
                    # nu.formula = ~ pb(Month),
                    #  - these options for nu also work but don't show up in the summary:
                    nu.formula = ~ pbc(Month, control = pbc.control(method = "GAIC")),
-                   # nu.formula = ~ga(~s(Month, bs = "cc", k = 12)),
+                   # nu.formula = ~ga(~s(Month, bs = "cc", k = 12)), GAIC selects the smoothness and is more robust
+                   
                    family = BEINF,
                    control = gamlss.control(c.crit = 0.01, n.cyc = 100, trace = FALSE),
                    # use data = RWocc_noNA to avoid NAs in lagged variables, if needed
@@ -392,6 +395,8 @@ Results for the nu parameter (P(exact zero)) are shown below. The seasonal nu te
 
 ```{r}
 term.plot(m_RWocc1, parameter = "nu")
+
+#for y axis if we use for poster, estimated effect of month on probability of zero occurrence
 ```
 
 Test significance of the nu term by dropping the term and applying a likelihood ratio test (LRT).
@@ -402,11 +407,11 @@ drop1(m_RWocc1, parameter = "nu")
 
 Note on getting here:
 
--   `sstAnom` vs `sst` chosen empirically: swapping in `pb(sst)` for `pb(sstAnom)` (all else equal) gives higher AIC, so `sst` is kept; also, scatterplots above show a more evident relationship between `sst` vs percent occurrence than between percent occurrence and `sstAnom`.
--   Site-specific seasonality via `pvc(Month, by = Site)` can be used instead of `scs(Month) + Site`, but the latter was used based on lower AIC.
--   Most of the above choices now do not affect the absence of residual autocorrelation in the final model, even the lagged percent occurrence could be removed (and switched to the full dataset).
--   The seasonal nu term resolves the residual autocorrelation problem that persisted in earlier specification. Zero-occurrence months cluster strongly in summer, so nu (P(exact zero) in BEINF) is modeled seasonally too.
--   The function `stepGAIC` can further simplify the model for mu. It depends on whether such model is needed, or the goal is to show the effect of each environmental variable (significant or not).
+- `sstAnom` vs `sst` chosen empirically: swapping in `pb(sst)` for `pb(sstAnom)` (all else equal) gives higher AIC, so `sst` is kept; also, scatterplots above show a more evident relationship between `sst` vs percent occurrence than between percent occurrence and `sstAnom`.
+- Site-specific seasonality via `pvc(Month, by = Site)` can be used instead of `scs(Month) + Site`, but the latter was used based on lower AIC.
+- Most of the above choices now do not affect the absence of residual autocorrelation in the final model, even the lagged percent occurrence could be removed (and switched to the full dataset).
+- The seasonal nu term resolves the residual autocorrelation problem that persisted in earlier specification. Zero-occurrence months cluster strongly in summer, so nu (P(exact zero) in BEINF) is modeled seasonally too.
+- The function `stepGAIC` can further simplify the model for mu. It depends on whether such model is needed, or the goal is to show the effect of each environmental variable (significant or not).
 
 # Load Biweekly Data
 
@@ -771,6 +776,7 @@ m_RWoccwk <- gamlss(percent_occurrence / 100 ~
                    #  SongYear +
                      pb(phase, max.df = 7, inter = 5) +
                      device_type + 
+                     cold_pool_index +
                     PercentOccurrence_l1,
                    nu.formula = ~ pbc(Month, control = pbc.control(method = "GAIC")),
                    family = BEINF,
@@ -780,6 +786,8 @@ AIC(m_RWoccwk)
 summary(m_RWoccwk)
 
 #m_RWoccwk <- gamlss::stepGAIC(m_RWoccwk)
+
+# bigger dataset, more statistical power higher resolution data
 
 ```
 
