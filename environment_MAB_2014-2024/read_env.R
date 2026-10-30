@@ -361,25 +361,24 @@ with(RW_dailyenv,
 
 library(tidyverse)
 library(GGally)
+library(dplyr)
+library(tidyr)
+library(lubridate)
 
-d <- read_csv("/Users/kirsten/Desktop/KirstensWork/NARW Consortium 2025/NARWCon_2025/DataRaw/NARWPercentOccur_Chla_8daySummary_080726.csv")
-
+d <- read_csv("/Users/kirsten/Desktop/KirstensWork/NARW Consortium 2025/NARWCon_2025/DataRaw/chla_dailyAllSites_NARWOccur.csv")
 
 d1 <- d %>%
-    # Ensure date column is formatted properly and extract year
     mutate(
-        # Explicitly convert to Date class first
-        date_clean = as.Date(date),
-        year = factor(format(date_clean, "%Y"))
+        # parse_date_time handles ISO 8601 strings reliably across formats
+        date_clean = as.Date(parse_date_time(time, orders = c("Ymd HMS", "YmdHMS", "Ymd"))),
+        year = factor(year(date_clean))
     ) %>%
-    # Filter strictly for 2014–2017
-    filter(year %in% c("2014", "2015", "2016", "2017")) %>%
-    # Drop NAs strictly from target analytical variables
-    drop_na(percent_occurrence, mean_chla) %>%
-    # Filter out non-positive chl-a values prior to log transformation
-    filter(chla_mean > 0) %>%
-    # Log10 transform Chl-a to address right-skewness
-    mutate(log10_chla = log10(chla_mean))
+    filter(year %in% c("2014", "2015", "2016", "2017", "2021", "2022", "2023", "2024")) %>%
+    # Update 'mean_chla' to match your actual column name
+    drop_na(NARWDailyOccurrence, mean_chla) %>%
+    filter(mean_chla > 0) %>%
+    mutate(log10_chla = log10(mean_chla))
+
 
 #add scatter points and a linear model fit line
 custom_smooth <- function(data, mapping, ...) {
@@ -391,10 +390,10 @@ custom_smooth <- function(data, mapping, ...) {
 #run ggpairs plot
 
 ggplot <- ggpairs(
-   d,
-    columns = c("percent_occurrence", "mean_chla"),
-    columnLabels = c("percent_occurrence", "Chl-a (mg/m³)"),
-    mapping = aes(color = site, alpha = 0.7),
+   d1,
+    columns = c("NARWDailyOccurrence", "mean_chla"),
+    columnLabels = c("NARWDailyOccurrence", "Chl-a (mg/m³)"),
+    mapping = aes(color = site_id, alpha = 0.7),
     lower = list(continuous = custom_smooth),
     diag = list(continuous = wrap("densityDiag", alpha = 0.4)),
     upper = list(continuous = wrap("cor", size = 3.5))
@@ -411,7 +410,7 @@ ggplot <- ggpairs(
 
 print(ggplot)
 
-cor.test(d$percent_occurrence, d$mean_chla, method = "spearman")
+cor.test(d$NARWDailyOccurrence, d$mean_chla, method = "spearman")
 
 
 # Aggregating data to weekly, biweekly, and monthly timescales (DOPPIO ROMS DATA)
